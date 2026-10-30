@@ -26,6 +26,7 @@ class ReasonCode(StrEnum):
     # CHAT
     KNOWLEDGE_QUESTION = "KNOWLEDGE_QUESTION"
     CONVERSATION = "CONVERSATION"
+    CHAT_FOLLOWUP = "CHAT_FOLLOWUP"
     # CONTROL_FALLBACK
     ACTION_LIKE_WITHOUT_EXECUTION = "ACTION_LIKE_WITHOUT_EXECUTION"
     CAPABILITY_QUESTION = "CAPABILITY_QUESTION"
@@ -40,6 +41,7 @@ class ReasonCode(StrEnum):
     INVALID_INPUT = "INVALID_INPUT"
     UNSUPPORTED_LANGUAGE = "UNSUPPORTED_LANGUAGE"
     AMBIGUOUS_FRAGMENT = "AMBIGUOUS_FRAGMENT"
+    CHAT_FOLLOWUP_UNCLEAR = "CHAT_FOLLOWUP_UNCLEAR"
     AMBIGUOUS_MIXED = "AMBIGUOUS_MIXED"
     BARE_CONFIRMATION = "BARE_CONFIRMATION"
     CLARIFICATION_DECLINED = "CLARIFICATION_DECLINED"
@@ -113,6 +115,7 @@ class RouteInput:
     language: str = "de"
     conversation_id: str | None = None
     local_handled: bool | None = None
+    chat_followup: bool = False  # Only supplied by the HA conversation entity.
 
 
 @dataclass(frozen=True)
