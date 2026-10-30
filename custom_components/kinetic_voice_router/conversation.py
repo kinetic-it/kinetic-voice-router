@@ -64,7 +64,11 @@ class KineticVoiceRouterConversationEntity(conversation.ConversationEntity):
     @override
     def supported_languages(self) -> list[str] | Literal["*"]:
         languages = self._runtime.connection.languages
-        return list(languages) if languages else MATCH_ALL
+        # Home Assistant requires the wildcard as the literal string "*", not ["*"].
+        # The Hermes Companion advertises wildcard support as a JSON language list.
+        if not languages or MATCH_ALL in languages:
+            return MATCH_ALL
+        return list(languages)
 
     @override
     async def async_added_to_hass(self) -> None:
