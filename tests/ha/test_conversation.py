@@ -26,7 +26,11 @@ from custom_components.kinetic_voice_router.const import (
     CONF_VERIFY_TLS,
     DOMAIN,
 )
-from custom_components.kinetic_voice_router.voice_router import ClarificationKind, FailureCode, responses
+from custom_components.kinetic_voice_router.voice_router import (
+    ClarificationKind,
+    FailureCode,
+    responses,
+)
 
 WARP = "Ist mein imaginärer Warp-Antrieb eingeschaltet?"
 EXPLAIN = "Kannst du mir erklären, wie ich die Lampe einschalten kann?"
@@ -307,7 +311,9 @@ async def test_active_no_question_no_cross_session_and_missing_history(hass, com
     await ask(entity, KNOWLEDGE, cid="c1", log=log)
     assert not entry.runtime_data.bridge.store.pop_chat_followup("c1")
     result = await ask(entity, "Tee", cid="c1", log=log)
-    assert result.response.speech == responses.CLARIFICATION_TEXT[ClarificationKind.QUESTION_OR_DEVICE]
+    assert result.response.speech == responses.CLARIFICATION_TEXT[
+        ClarificationKind.QUESTION_OR_DEVICE
+    ]
     assert inference_calls(companion) == 1
 
 
