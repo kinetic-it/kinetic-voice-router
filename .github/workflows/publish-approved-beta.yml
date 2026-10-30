@@ -1,0 +1,99 @@
+name: Publish approved 0.5.0b1 beta (one time)
+
+# Owner authorized one public experimental pre-release on 2026-10-30.
+# This workflow is intentionally pinned to 0.5.0b1 and the reviewed source tree.
+# It does not publish future versions; do not generalize this workflow.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-kvr-beta-0-5-0b1
+  cancel-in-progress: false
+
+jobs:
+  approved-beta:
+    name: Validate and publish owner-approved 0.5.0b1
+    if: github.repository == 'kinetic-it/kinetic-voice-router'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Pin reviewed integration bytes, version and release scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          REVIEWED_SHA=69af2141d3984fcea7e1dca76f44d69a0d743e4c
+          git cat-file -e "${REVIEWED_SHA}^{commit}"
+          git diff --quiet "$REVIEWED_SHA" HEAD -- custom_components/kinetic_voice_router
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          m = json.loads(Path("custom_components/kinetic_voice_router/manifest.json").read_text())
+          assert m["version"] == "0.5.0b1", m["version"]
+          assert m["domain"] == "kinetic_voice_router"
+          assert Path("hacs.json").is_file()
+          PY
+      - name: Install pinned test dependencies
+        run: python -m pip install --quiet --require-hashes --only-binary ":all:" -r requirements-test.txt
+      - name: Repeat full router, integration, lint and public-source audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -m unittest discover -s tests/router
+          python -m pytest -q tests/ha
+          ruff check .
+          ruff format --check .
+          python scripts/audit_public.py
+      - name: Prepare experimental beta release archive
+        shell: bash
+        run: |
+          cd custom_components/kinetic_voice_router
+          zip -q -r -X "$GITHUB_WORKSPACE/kinetic_voice_router.zip" . -x '*/__pycache__/*' -x '__pycache__/*'
+      - name: Publish exactly one owner-approved GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v0.5.0b1 >/dev/null 2>&1; then
+            echo "BETA_RELEASE=ALREADY_PUBLISHED"
+            exit 0
+          fi
+          cat > /tmp/release-notes.md <<'NOTES'
+          **Experimental beta – not production-ready. No warranty.**
+
+          Standalone Kinetic Voice Router for Home Assistant; adds a native conversation agent,
+          directly configurable authenticated Hermes Agent Companion connection and HACS integration.
+          It does not require patching the separate Hermes Agent integration.
+
+          **Before installing:** Snapshot and back up Home Assistant. The existing private 0.4.x
+          integration must be migrated; read [docs/MIGRATION.md](https://github.com/kinetic-it/kinetic-voice-router/blob/main/docs/MIGRATION.md).
+          Reauthentication for Hermes URL and token is required. Switching the Assist pipeline
+          to the Kinetic Voice Router agent is manual. Modes: Off, Observe, Active (default Off).
+          Do not use for safety-critical control or unattended operation.
+
+          **Tests:** 142 router tests and 165 simulated integration tests; HACS and hassfest checks
+          passed, plus a local workshop test. **No real Home Assistant or Hermes Companion test
+          has been performed for the new standalone version.** That is the next pilot gate.
+          Commercial use is allowed under MIT; third-party attribution is in NOTICE.
+          NOTES
+          gh release create "v0.5.0b1" kinetic_voice_router.zip \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "Kinetic Voice Router v0.5.0b1 (experimental beta)" \
+            --notes-file /tmp/release-notes.md
+          gh release view v0.5.0b1 --json isDraft,isPrerelease,url,tagName
+          echo "BETA_RELEASE=PASS"

@@ -1,0 +1,158 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kinetic Voice Router",
+        "description": "Richtet den Kinetic Voice Router (Version {version}) ein und verbindet ihn mit deinem Hermes-Agent-Companion. Die Verbindung wird getestet, bevor etwas gespeichert wird. Der Router bearbeitet nur Anfragen, die Home Assistant nicht lokal erledigt hat, und steuert nie Geräte. Er startet in der Betriebsart „Aus“. **Experimentelle Software, ohne Gewähr.**",
+        "data": {
+          "url": "Hermes-Companion-URL",
+          "token": "Bearer-Token",
+          "verify_tls": "TLS-Zertifikat prüfen"
+        },
+        "data_description": {
+          "url": "Adresse des Hermes-Agent-Companions, z. B. http://host:8765 (nur LAN oder VPN; HTTPS empfohlen).",
+          "token": "Token des Hermes-Companions. Er wird in der Home-Assistant-Konfiguration gespeichert und weder angezeigt noch protokolliert.",
+          "verify_tls": "Eingeschaltet lassen. Nur bei selbstsigniertem Zertifikat in einem vertrauenswürdigen Netz ausschalten."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Hermes-Companion neu verbinden",
+        "description": "Die Verbindung zum Hermes-Companion muss neu eingerichtet werden (z. B. abgelehnter Token oder Update von einer älteren Version). URL und Token eingeben; sie werden zuerst getestet.",
+        "data": {
+          "url": "Hermes-Companion-URL",
+          "token": "Bearer-Token",
+          "verify_tls": "TLS-Zertifikat prüfen"
+        },
+        "data_description": {
+          "url": "Adresse des Hermes-Agent-Companions, z. B. http://host:8765 (nur LAN oder VPN; HTTPS empfohlen).",
+          "token": "Token des Hermes-Companions. Er wird in der Home-Assistant-Konfiguration gespeichert und weder angezeigt noch protokolliert.",
+          "verify_tls": "Eingeschaltet lassen. Nur bei selbstsigniertem Zertifikat in einem vertrauenswürdigen Netz ausschalten."
+        }
+      },
+      "reconfigure": {
+        "title": "Hermes-Companion-Verbindung",
+        "description": "URL oder TLS-Prüfung ändern. Token leer lassen, um den gespeicherten zu behalten. Die Verbindung wird zuerst getestet.",
+        "data": {
+          "url": "Hermes-Companion-URL",
+          "token": "Bearer-Token",
+          "verify_tls": "TLS-Zertifikat prüfen"
+        },
+        "data_description": {
+          "url": "Adresse des Hermes-Agent-Companions, z. B. http://host:8765 (nur LAN oder VPN; HTTPS empfohlen).",
+          "token": "Token des Hermes-Companions. Er wird in der Home-Assistant-Konfiguration gespeichert und weder angezeigt noch protokolliert.",
+          "verify_tls": "Eingeschaltet lassen. Nur bei selbstsigniertem Zertifikat in einem vertrauenswürdigen Netz ausschalten."
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Kinetic Voice Router ist bereits eingerichtet. Es ist nur ein Eintrag möglich.",
+      "reauth_successful": "Verbindung aktualisiert.",
+      "reconfigure_successful": "Verbindung aktualisiert."
+    },
+    "error": {
+      "invalid_url": "Eine gültige HTTP- oder HTTPS-Adresse ohne Benutzername, Query oder Fragment eingeben.",
+      "cannot_connect": "Der Hermes-Companion ist nicht erreichbar.",
+      "invalid_auth": "Der Hermes-Companion lehnt den Token ab.",
+      "unsupported_api": "Der Hermes-Companion nutzt eine inkompatible API-Version.",
+      "no_conversation": "Der Hermes-Companion bietet keine Gespräche an.",
+      "invalid_response": "Der Hermes-Companion hat eine ungültige Antwort gesendet.",
+      "unknown": "Unerwarteter Fehler beim Testen der Verbindung."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kinetic Voice Router",
+        "description": "**Betriebsart:** {mode}\n**Hermes:** {hermes_status}\n**Version:** {version}",
+        "menu_options": {
+          "settings": "Betriebsart",
+          "connection": "Hermes-Verbindung",
+          "test": "Testanfrage",
+          "statistics": "Laufzeitstatistik"
+        },
+        "menu_option_descriptions": {
+          "settings": "Aus, Beobachten oder Aktiv",
+          "connection": "Verbindung zum Hermes-Companion prüfen",
+          "test": "Router-Einordnung eines Satzes simulieren",
+          "statistics": "Anonyme Zähler seit HA-Start"
+        }
+      },
+      "settings": {
+        "title": "Betriebsart",
+        "description": "Aktuell: **{mode}**. Der Router schaltet nie Geräte.",
+        "data": {
+          "mode": "Betriebsart"
+        },
+        "data_description": {
+          "mode": "Änderungen wirken sofort nach dem Speichern."
+        },
+        "submit": "Betriebsart speichern"
+      },
+      "connection": {
+        "title": "Hermes-Verbindung",
+        "description": "**Status:** {status}\n\n**API-Version:** {api_version}\n\n**Companion-Version:** {companion_version}\n\n**TLS-Prüfung:** {tls}\n\nDiese Seite führt bei jedem Öffnen einen echten Verbindungstest durch. URL und Token werden nie angezeigt. Zum Ändern: Dreipunktmenü der Integration → Neu konfigurieren.",
+        "menu_options": {
+          "connection": "Erneut prüfen",
+          "init": "Zurück zur Übersicht"
+        }
+      },
+      "test": {
+        "title": "Testanfrage",
+        "description": "Simulation – keine Geräteaktion, kein Hermes-Aufruf.",
+        "data": {
+          "test_sentence": "Testsatz"
+        },
+        "data_description": {
+          "test_sentence": "Geprüft wird nur die Router-Einordnung, nicht ob Home Assistant den Satz lokal erledigen würde. Der Satz wird nicht gespeichert."
+        },
+        "submit": "Anfrage testen"
+      },
+      "test_result": {
+        "title": "Ergebnis (Simulation)",
+        "description": "**Route:** {route}\n\n**Regel-ID:** `{rule}`\n\n**Warum?** {reason}\n\n**Antwort / Weitergabe:** {answer}",
+        "menu_options": {
+          "test": "Neue Anfrage",
+          "init": "Zurück zur Übersicht"
+        }
+      },
+      "statistics": {
+        "title": "Laufzeitstatistik",
+        "description": "{summary}",
+        "menu_options": {
+          "statistics_details": "Technische Details",
+          "reset_confirm": "Zähler zurücksetzen …",
+          "init": "Zurück zur Übersicht"
+        }
+      },
+      "statistics_details": {
+        "title": "Technische Details",
+        "description": "{details}\n\nRouter {router_version}",
+        "menu_options": {
+          "statistics": "Zurück zur Statistik",
+          "init": "Zurück zur Übersicht"
+        }
+      },
+      "reset_confirm": {
+        "title": "Zähler zurücksetzen?",
+        "description": "Alle Laufzeitzähler werden auf 0 gesetzt. Betriebsart und Einstellungen bleiben unverändert. Das lässt sich nicht rückgängig machen.",
+        "menu_options": {
+          "reset_execute": "Zähler zurücksetzen",
+          "statistics": "Abbrechen"
+        }
+      }
+    },
+    "error": {
+      "invalid_mode": "Unbekannte Betriebsart. Bitte Aus, Beobachten oder Aktiv wählen.",
+      "empty_test_sentence": "Bitte einen Testsatz eingeben."
+    }
+  },
+  "selector": {
+    "mode": {
+      "options": {
+        "off": "Aus – Hermes arbeitet wie ohne Router",
+        "observe": "Beobachten – nur zählen, Antworten unverändert",
+        "active": "Aktiv – kurze Router-Antwort bei Geräte- und Statusanfragen"
+      }
+    }
+  }
+}
