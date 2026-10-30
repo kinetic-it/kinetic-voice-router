@@ -26,6 +26,7 @@ from homeassistant.helpers import intent
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import CONN_OK, NAME
+from .voice_router.classify import is_device_term, normalize
 from .hermes_client import HermesError
 from .runtime import RouterRuntime
 from .status import code_for_error
@@ -99,6 +100,13 @@ class KineticVoiceRouterConversationEntity(conversation.ConversationEntity):
 
         # HA's chat session ID is always set; user_input.conversation_id may be None.
         session_id = getattr(chat_log, "conversation_id", None) or user_input.conversation_id
+        # Consume a bounded question token only if HA really supplied the prior
+        # assistant turn in the same ChatLog. The token stores no spoken text.
+        chat_followup = False
+        if bridge.enabled:
+            chat_followup = bridge.store.pop_chat_followup(session_id) and _previous_chat_question(
+                chat_log, user_input.agent_id
+            )
 
         async def call_hermes() -> str | None:
             return await self._ask_hermes(messages, session_id, user_input.language)
@@ -110,6 +118,7 @@ class KineticVoiceRouterConversationEntity(conversation.ConversationEntity):
                 conversation_id=session_id,
                 call_hermes=call_hermes,
                 hermes_errors=_HERMES_ERRORS,
+                chat_followup=chat_followup,
             )
             if reply is not None:
                 _LOGGER.debug("Router decision: %s", reply.decision.trace())
@@ -162,7 +171,36 @@ class KineticVoiceRouterConversationEntity(conversation.ConversationEntity):
         chat_log.async_add_assistant_content_without_tools(
             conversation.AssistantContent(agent_id=user_input.agent_id, content=text)
         )
+        if self._runtime.bridge.enabled:
+            session_id = getattr(chat_log, "conversation_id", None) or user_input.conversation_id
+            store = self._runtime.bridge.store
+            if _safe_chat_question(text):
+                store.set_chat_followup(session_id)
+            else:
+                store.clear_chat_followup(session_id)
         return conversation.async_get_result_from_chat_log(user_input, chat_log)
+
+
+def _safe_chat_question(text: str) -> bool:
+    """Only spoken questions without known HA device words arm a chat follow-up."""
+    return (
+        text.strip().endswith(("?", "？", ";"))
+        and not any(is_device_term(token) for token in normalize(text).split())
+    )
+
+
+def _previous_chat_question(chat_log: Any, agent_id: str) -> bool:
+    """Require a genuine previous assistant turn, not a newly supplied command."""
+    content = getattr(chat_log, "content", ())
+    if len(content) < 2:
+        return False
+    previous = content[-2]  # HA appended current user input as the last content.
+    return (
+        getattr(previous, "role", None) == "assistant"
+        and getattr(previous, "agent_id", None) == agent_id
+        and isinstance(getattr(previous, "content", None), str)
+        and _safe_chat_question(previous.content)
+    )
 
 
 def _messages(chat_log: Any) -> list[dict[str, str]]:
