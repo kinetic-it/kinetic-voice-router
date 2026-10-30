@@ -4,9 +4,19 @@ All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions with `b`/`rc` are
 pre-releases and **not** a recommendation for production use.
 
-## [0.5.0b1] - unreleased
+## [0.5.0b2] - unreleased
 
-First standalone version. **Not published as a release.** Experimental, no warranty.
+Experimental beta maintenance fix, awaiting workshop and real Home Assistant acceptance.
+
+### Fixed
+- Normalize the Hermes Companion's wildcard language list `["*"]` into Home Assistant's
+  required literal `"*"` for conversation agents. Without this normalization, the agent
+  appears disabled in the voice pipeline language selector despite being connected.
+- Add regressions for wildcard, mixed wildcard, explicit language lists and empty lists.
+
+## [0.5.0b1] - 2026-10-30
+
+First standalone version, published as an experimental pre-release with no warranty.
 
 ### Added
 - Own Home Assistant conversation agent (`conversation.kinetic_voice_router`); no patch or
