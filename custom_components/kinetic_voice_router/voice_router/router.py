@@ -168,12 +168,36 @@ def route(
     # Words such as "mach das", "schalten", "stopp" and "aus" must not be
     # promoted to a Hermes command just because the prior answer was a question.
     safe_acknowledgements = frozenset(
-        {"ja", "jap", "jo", "genau", "richtig", "ja bitte", "ja genau",
-         "nein", "nö", "ne", "nein danke"}
+        {
+            "ja",
+            "jap",
+            "jo",
+            "genau",
+            "richtig",
+            "ja bitte",
+            "ja genau",
+            "nein",
+            "nö",
+            "ne",
+            "nein danke",
+        }
     )
     control_fragments = frozenset(
-        {"an", "aus", "ein", "auf", "zu", "on", "off", "hoch", "runter",
-         "heller", "dunkler", "lauter", "leiser"}
+        {
+            "an",
+            "aus",
+            "ein",
+            "auf",
+            "zu",
+            "on",
+            "off",
+            "hoch",
+            "runter",
+            "heller",
+            "dunkler",
+            "lauter",
+            "leiser",
+        }
     )
     # A brief reply to a *verified* prior conversational question can reach Hermes.
     # Explicit control/status requests are never included; device-like fragments
