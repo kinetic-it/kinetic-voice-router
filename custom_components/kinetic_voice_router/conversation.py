@@ -183,9 +183,8 @@ class KineticVoiceRouterConversationEntity(conversation.ConversationEntity):
 
 def _safe_chat_question(text: str) -> bool:
     """Only spoken questions without known HA device words arm a chat follow-up."""
-    return (
-        text.strip().endswith(("?", "？", ";"))
-        and not any(is_device_term(token) for token in normalize(text).split())
+    return text.strip().endswith(("?", "？", ";")) and not any(
+        is_device_term(token) for token in normalize(text).split()
     )
 
 
