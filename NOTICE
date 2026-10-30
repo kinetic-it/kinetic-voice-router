@@ -1,0 +1,61 @@
+Kinetic Voice Router
+Copyright (c) 2026 Kinetic-IT contributors
+Licensed under the MIT License (see LICENSE).
+
+THIRD-PARTY NOTICES
+===================
+
+1. Hermes Agent Companion API contract and client design
+--------------------------------------------------------
+Project:  hermes-homeassistant (Hermes Agent Home Assistant integration)
+URL:      https://github.com/Codename-11/hermes-homeassistant
+Version:  commit 7dc174cedf2cf47b16083979ff9b5b4bfc8fa8a9 (reviewed)
+License:  MIT
+
+The wire contract used by custom_components/kinetic_voice_router/hermes_client.py
+(endpoints /health, /v1/capabilities and /v1/inference, bearer authentication, the
+error-code vocabulary, API major version 1, the redirect and URL-safety rules) follows
+that project. hermes_client.py is a reduced, conversation-only re-implementation and
+is NOT a verbatim copy; it is nevertheless derived in design from the MIT-licensed
+source, so the original license and copyright notice are reproduced here:
+
+MIT License
+
+Copyright (c) 2026 Bailey Dixon
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+This project is independent of, and not endorsed by, the maintainers of
+hermes-homeassistant, Hermes Agent, Home Assistant or Nabu Casa. No source file of
+hermes-homeassistant is included in this repository.
+
+2. Runtime dependencies
+-----------------------
+The integration declares no additional requirements. It uses packages that Home
+Assistant itself provides (aiohttp, yarl, voluptuous). They are not redistributed here.
+
+3. Development and test dependencies (not distributed with the integration)
+---------------------------------------------------------------------------
+Pinned with hashes in requirements-test.txt: pytest, pytest-asyncio, aiohttp, yarl,
+voluptuous, ruff and their transitive dependencies, each under its own license.
+
+4. Brand and icon files
+-----------------------
+This repository does not contain a brand icon yet. Icon files will be added only
+after the rights holder has confirmed their origin and license (see CHANGELOG.md).
