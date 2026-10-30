@@ -596,6 +596,7 @@ class T19aChatFollowup(unittest.TestCase):
         for text in (
             "Licht", "Steckdose", "Ja Gerät", "Schalte das Licht ein",
             "Licht an", "Ist mein Warp-Antrieb eingeschaltet?",
+            "Mach", "Mach das", "Ja mach", "Schalten", "Stopp", "Aus",
         ):
             with self.subTest(text=text):
                 d = _route(text, SessionStore(), chat_followup=True)
