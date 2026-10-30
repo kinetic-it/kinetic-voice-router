@@ -4,11 +4,11 @@
 >
 > Not for safety-critical device control, emergency response, access control or unattended
 > operation. A router decision proves neither a device state nor an executed action.
-> Use at your own risk. **There is no released version yet.**
+> Use at your own risk. **Only experimental beta pre-releases are available.**
 >
 > Nicht für sicherheitskritische Gerätesteuerung, Notfälle, Zutrittskontrolle oder
 > unbeaufsichtigten Betrieb. Eine Router-Entscheidung beweist weder einen Gerätezustand
-> noch eine ausgeführte Aktion. Nutzung auf eigenes Risiko. **Es gibt noch keine veröffentlichte Version.**
+> noch eine ausgeführte Aktion. Nutzung auf eigenes Risiko. **Derzeit gibt es nur experimentelle Beta-Vorabversionen.**
 
 Kinetic Voice Router is a **Home Assistant conversation agent** that sits in front of a
 [Hermes Agent](https://github.com/Codename-11/hermes-homeassistant) **Companion**. It lets
@@ -24,18 +24,20 @@ Home Assistant handle everything it understands locally, and takes care of the r
 
 | | |
 |---|---|
-| Version in this repository | `0.5.0b1` (pre-release, **not published**) |
+| Version in this repository | `0.5.0b2` (under review, **not published**); `v0.5.0b1` is a published experimental beta |
 | Tested against | Home Assistant 2026.9.x **contract stubs** and a local fake companion. No live Home Assistant, HACS or hardware run has been done for this version. |
 | Hermes Companion API | v1 (`/health`, `/v1/capabilities`, `/v1/inference`), bearer token |
 | Licence | MIT, personal **and commercial** use permitted, **without warranty** |
 
 ## Installation
 
-**Not available yet.** Please do not add an unreleased branch to HACS. Once a tested release
-exists, you will add `https://github.com/kinetic-it/kinetic-voice-router` as a custom
-*Integration* repository in HACS (from Home Assistant 2026.11 the built-in marketplace uses
-the same repository layout) and install the release from there. Updates are offered by HACS
-when a new release is published; nothing is installed without your confirmation.
+**Experimental beta only.** The published pre-release `v0.5.0b1` may be installed by
+adding `https://github.com/kinetic-it/kinetic-voice-router` as a custom *Integration*
+repository in HACS, then explicitly selecting the beta release. The proposed
+`v0.5.0b2` compatibility fix is not released yet; do not install its development branch.
+There is no stable or production-supported release. HACS offers updates when a new release
+is published, and installation requires confirmation. Before upgrading an existing 0.4.x
+instance, back up Home Assistant and read [docs/MIGRATION.md](docs/MIGRATION.md).
 
 ### Setup (planned flow)
 
