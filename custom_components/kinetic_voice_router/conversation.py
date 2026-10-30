@@ -26,10 +26,10 @@ from homeassistant.helpers import intent
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import CONN_OK, NAME
-from .voice_router.classify import is_device_term, normalize
 from .hermes_client import HermesError
 from .runtime import RouterRuntime
 from .status import code_for_error
+from .voice_router.classify import is_device_term, normalize
 
 _LOGGER = logging.getLogger(__name__)
 
