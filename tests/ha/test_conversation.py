@@ -58,6 +58,27 @@ def inference_calls(companion: FakeCompanion) -> int:
     return len(companion.inference_bodies)
 
 
+# --- Conversation language compatibility ---------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("advertised", "expected"),
+    [
+        (["*"], "*"),  # real Hermes Companion: all languages via wildcard list
+        (["*", "de"], "*"),
+        (["de", "en"], ["de", "en"]),
+        ([], "*"),
+    ],
+)
+async def test_supported_languages_normalizes_companion_wildcard(
+    hass, companion, advertised, expected
+):
+    companion.languages = advertised
+    entry, entity = await load(hass, "off")
+    assert entry.runtime_data.connection.languages == tuple(advertised)
+    assert entity.supported_languages == expected
+
+
 # --- Mode OFF: plain pass-through -----------------------------------------------------------
 
 
