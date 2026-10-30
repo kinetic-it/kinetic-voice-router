@@ -7,7 +7,7 @@ from typing import Final
 DOMAIN: Final = "kinetic_voice_router"
 NAME: Final = "Kinetic Voice Router"
 # Must match manifest.json "version" (checked by tests).
-INTEGRATION_VERSION: Final = "0.5.0b1"
+INTEGRATION_VERSION: Final = "0.5.0b2"
 
 # Hermes Agent Companion connection (config entry data; the token is a secret).
 CONF_URL: Final = "url"

@@ -1,7 +1,7 @@
-name: Publish approved 0.5.0b1 beta (one time)
+name: Publish approved 0.5.0b2 beta (one time)
 
 # Owner authorized one public experimental pre-release on 2026-10-30.
-# This workflow is intentionally pinned to 0.5.0b1 and the reviewed source tree.
+# This workflow is intentionally pinned to 0.5.0b2 and the reviewed source tree.
 # It does not publish future versions; do not generalize this workflow.
 on:
   push:
@@ -11,12 +11,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: publish-kvr-beta-0-5-0b1
+  group: publish-kvr-beta-0-5-0b2
   cancel-in-progress: false
 
 jobs:
   approved-beta:
-    name: Validate and publish owner-approved 0.5.0b1
+    name: Validate and publish owner-approved 0.5.0b2
     if: github.repository == 'kinetic-it/kinetic-voice-router'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -34,14 +34,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          REVIEWED_SHA=69af2141d3984fcea7e1dca76f44d69a0d743e4c
+          REVIEWED_SHA=fbd12495d8e3612595b9df4ae7685eba9afc0892
           git cat-file -e "${REVIEWED_SHA}^{commit}"
           git diff --quiet "$REVIEWED_SHA" HEAD -- custom_components/kinetic_voice_router
           python - <<'PY'
           import json
           from pathlib import Path
           m = json.loads(Path("custom_components/kinetic_voice_router/manifest.json").read_text())
-          assert m["version"] == "0.5.0b1", m["version"]
+          assert m["version"] == "0.5.0b2", m["version"]
           assert m["domain"] == "kinetic_voice_router"
           assert Path("hacs.json").is_file()
           PY
@@ -68,32 +68,36 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view v0.5.0b1 >/dev/null 2>&1; then
+          if gh release view v0.5.0b2 >/dev/null 2>&1; then
             echo "BETA_RELEASE=ALREADY_PUBLISHED"
             exit 0
           fi
           cat > /tmp/release-notes.md <<'NOTES'
           **Experimental beta – not production-ready. No warranty.**
 
-          Standalone Kinetic Voice Router for Home Assistant; adds a native conversation agent,
-          directly configurable authenticated Hermes Agent Companion connection and HACS integration.
-          It does not require patching the separate Hermes Agent integration.
+          Kinetic Voice Router 0.5.0b2 fixes the Home Assistant conversation-agent language
+          selector: Hermes Companion's wildcard language list ["*"] maps to Home Assistant's
+          required literal wildcard "*". Without this fix, the agent was greyed out for a
+          German Speaker pipeline even though the Hermes Companion connection worked.
 
-          **Before installing:** Snapshot and back up Home Assistant. The existing private 0.4.x
-          integration must be migrated; read [docs/MIGRATION.md](https://github.com/kinetic-it/kinetic-voice-router/blob/main/docs/MIGRATION.md).
-          Reauthentication for Hermes URL and token is required. Switching the Assist pipeline
-          to the Kinetic Voice Router agent is manual. Modes: Off, Observe, Active (default Off).
-          Do not use for safety-critical control or unattended operation.
+          This beta is a standalone conversation integration with three modes: Off, Observe,
+          Active. It does not execute device actions, expose entities, or change Assist pipelines.
 
-          **Tests:** 142 router tests and 165 simulated integration tests; HACS and hassfest checks
-          passed, plus a local workshop test. **No real Home Assistant or Hermes Companion test
-          has been performed for the new standalone version.** That is the next pilot gate.
-          Commercial use is allowed under MIT; third-party attribution is in NOTICE.
+          **Upgrade:** Use HACS, make an HA backup, and retain the working 0.4.3 backup and
+          VM snapshot. Keep the old Speaker conversation agent selected until this version
+          appears as selectable and a harmless live query succeeds. Keep Home Assistant's
+          local intent preference enabled. Read [docs/MIGRATION.md](https://github.com/kinetic-it/kinetic-voice-router/blob/main/docs/MIGRATION.md).
+
+          **Checks:** 142 router tests, 169 integration tests with fake Companion, HACS,
+          hassfest, lint, public audit, and independent local validation. HAOS with 0.5.0b1 already
+          confirmed Companion reachability, **but the new 0.5.0b2 agent has not yet passed
+          real conversation/inference testing**. Experimental; not for safety-critical or
+          unattended use. MIT (personal/commercial use permitted, no warranty).
           NOTES
-          gh release create "v0.5.0b1" kinetic_voice_router.zip \
+          gh release create "v0.5.0b2" kinetic_voice_router.zip \
             --target "$GITHUB_SHA" \
             --prerelease \
-            --title "Kinetic Voice Router v0.5.0b1 (experimental beta)" \
+            --title "Kinetic Voice Router v0.5.0b2 (experimental beta)" \
             --notes-file /tmp/release-notes.md
-          gh release view v0.5.0b1 --json isDraft,isPrerelease,url,tagName
+          gh release view v0.5.0b2 --json isDraft,isPrerelease,url,tagName
           echo "BETA_RELEASE=PASS"

@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-ROUTER_VERSION = "0.5.0b1"
+ROUTER_VERSION = "0.5.0b2"
 
 
 class Lane(StrEnum):
