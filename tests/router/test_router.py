@@ -569,6 +569,40 @@ class T18ErrorTruth(unittest.TestCase):
         self.assertEqual(out, responses.TOO_LONG_TO_SPEAK)
 
 
+class T19aChatFollowup(unittest.TestCase):
+    """Only verified, safe short follow-ups may reach Hermes."""
+
+    def test_short_chat_answer_in_explicit_followup_context(self):
+        for text in ("Tee", "Kaffee", "Ja", "Nein", "gruener Tee"):
+            with self.subTest(text=text):
+                d = _route(text, SessionStore(), chat_followup=True)
+                self.assertIs(d.lane, Lane.CHAT)
+                self.assertIs(d.reason_code, ReasonCode.CHAT_FOLLOWUP)
+                self.assertTrue(d.may_call_hermes)
+                self.assertFalse(d.may_call_ha_action)
+
+    def test_one_letter_stt_is_not_guessed(self):
+        d = _route("T.", SessionStore(), chat_followup=True)
+        self.assertIs(d.reason_code, ReasonCode.CHAT_FOLLOWUP_UNCLEAR)
+        self.assertEqual(d.response, responses.CHAT_FOLLOWUP_UNCLEAR)
+        self.assertFalse(d.may_call_hermes)
+
+    def test_no_followup_context_preserves_router_policy(self):
+        for text in ("Tee", "Ja", "Nein"):
+            with self.subTest(text=text):
+                self.assertFalse(_route(text, SessionStore()).may_call_hermes)
+
+    def test_device_and_action_followups_cannot_bypass_guards(self):
+        for text in (
+            "Licht", "Steckdose", "Ja Gerät", "Schalte das Licht ein",
+            "Licht an", "Ist mein Warp-Antrieb eingeschaltet?",
+        ):
+            with self.subTest(text=text):
+                d = _route(text, SessionStore(), chat_followup=True)
+                self.assertFalse(d.may_call_hermes)
+                self.assertFalse(d.may_call_ha_action)
+
+
 class T19Clarification(unittest.TestCase):
     """T19: Mehrdeutigkeit -> kurze Rueckfrage; ein bestaetigendes 'Ja' loest keine Aktion aus."""
 
