@@ -164,6 +164,17 @@ def route(
         )
 
     kind = result.kind
+    # These are confirmations/short words, not control acknowledgements.
+    # Words such as "mach das", "schalten", "stopp" and "aus" must not be
+    # promoted to a Hermes command just because the prior answer was a question.
+    safe_acknowledgements = frozenset(
+        {"ja", "jap", "jo", "genau", "richtig", "ja bitte", "ja genau",
+         "nein", "nö", "ne", "nein danke"}
+    )
+    control_fragments = frozenset(
+        {"an", "aus", "ein", "auf", "zu", "on", "off", "hoch", "runter",
+         "heller", "dunkler", "lauter", "leiser"}
+    )
     # A brief reply to a *verified* prior conversational question can reach Hermes.
     # Explicit control/status requests are never included; device-like fragments
     # and confirmations without a question remain on the existing safe path.
@@ -172,6 +183,8 @@ def route(
         and kind in (Kind.FRAGMENT, Kind.CONFIRM, Kind.DECLINE)
         and len(normalized.split()) <= 2
         and not any(is_device_term(token) for token in normalized.split())
+        and normalized not in control_fragments
+        and (kind is Kind.FRAGMENT or normalized in safe_acknowledgements)
     ):
         if len(normalized) == 1 and normalized.isalpha():
             return _decision(
