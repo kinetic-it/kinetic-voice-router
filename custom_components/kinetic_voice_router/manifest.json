@@ -1,0 +1,14 @@
+{
+  "domain": "kinetic_voice_router",
+  "name": "Kinetic Voice Router",
+  "codeowners": ["@kinetic-it"],
+  "config_flow": true,
+  "dependencies": ["conversation"],
+  "documentation": "https://github.com/kinetic-it/kinetic-voice-router",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/kinetic-it/kinetic-voice-router/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.5.0b1"
+}

@@ -1,0 +1,158 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kinetic Voice Router",
+        "description": "Adds the Kinetic Voice Router (version {version}) and connects it to your Hermes Agent Companion. The connection is tested before anything is saved. The router only handles requests that Home Assistant did not process locally and never controls devices. It starts in mode \"Off\". **Experimental software, no warranty.**",
+        "data": {
+          "url": "Hermes Companion URL",
+          "token": "Bearer token",
+          "verify_tls": "Verify TLS certificate"
+        },
+        "data_description": {
+          "url": "Address of the Hermes Agent Companion, e.g. http://host:8765 (LAN or VPN only; HTTPS recommended).",
+          "token": "Token of the Hermes Companion. It is stored in the Home Assistant configuration and never shown or logged.",
+          "verify_tls": "Keep enabled. Only disable for a self-signed certificate in a trusted network."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect Hermes Companion",
+        "description": "The connection to the Hermes Companion needs to be set up again (for example a rejected token, or an update from an older version). Enter URL and token; they are tested first.",
+        "data": {
+          "url": "Hermes Companion URL",
+          "token": "Bearer token",
+          "verify_tls": "Verify TLS certificate"
+        },
+        "data_description": {
+          "url": "Address of the Hermes Agent Companion, e.g. http://host:8765 (LAN or VPN only; HTTPS recommended).",
+          "token": "Token of the Hermes Companion. It is stored in the Home Assistant configuration and never shown or logged.",
+          "verify_tls": "Keep enabled. Only disable for a self-signed certificate in a trusted network."
+        }
+      },
+      "reconfigure": {
+        "title": "Hermes Companion connection",
+        "description": "Change URL or TLS check. Leave the token empty to keep the stored one. The connection is tested first.",
+        "data": {
+          "url": "Hermes Companion URL",
+          "token": "Bearer token",
+          "verify_tls": "Verify TLS certificate"
+        },
+        "data_description": {
+          "url": "Address of the Hermes Agent Companion, e.g. http://host:8765 (LAN or VPN only; HTTPS recommended).",
+          "token": "Token of the Hermes Companion. It is stored in the Home Assistant configuration and never shown or logged.",
+          "verify_tls": "Keep enabled. Only disable for a self-signed certificate in a trusted network."
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Kinetic Voice Router is already set up. Only one entry is supported.",
+      "reauth_successful": "Connection updated.",
+      "reconfigure_successful": "Connection updated."
+    },
+    "error": {
+      "invalid_url": "Enter a valid HTTP or HTTPS address without user name, query or fragment.",
+      "cannot_connect": "The Hermes Companion could not be reached.",
+      "invalid_auth": "The Hermes Companion rejected the token.",
+      "unsupported_api": "The Hermes Companion uses an incompatible API version.",
+      "no_conversation": "The Hermes Companion does not offer conversation.",
+      "invalid_response": "The Hermes Companion sent an invalid response.",
+      "unknown": "Unexpected error while testing the connection."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kinetic Voice Router",
+        "description": "**Mode:** {mode}\n**Hermes:** {hermes_status}\n**Version:** {version}",
+        "menu_options": {
+          "settings": "Mode",
+          "connection": "Hermes connection",
+          "test": "Test request",
+          "statistics": "Runtime statistics"
+        },
+        "menu_option_descriptions": {
+          "settings": "Off, Observe or Active",
+          "connection": "Check the connection to the Hermes Companion",
+          "test": "Simulate the router decision for a sentence",
+          "statistics": "Anonymous counters since HA start"
+        }
+      },
+      "settings": {
+        "title": "Mode",
+        "description": "Current: **{mode}**. The router never switches devices.",
+        "data": {
+          "mode": "Mode"
+        },
+        "data_description": {
+          "mode": "Changes take effect immediately after saving."
+        },
+        "submit": "Save mode"
+      },
+      "connection": {
+        "title": "Hermes connection",
+        "description": "**Status:** {status}\n\n**API version:** {api_version}\n\n**Companion version:** {companion_version}\n\n**TLS check:** {tls}\n\nThis page runs a real connection test each time it opens. URL and token are never shown. To change them use the three-dots menu of the integration → Reconfigure.",
+        "menu_options": {
+          "connection": "Test again",
+          "init": "Back to overview"
+        }
+      },
+      "test": {
+        "title": "Test request",
+        "description": "Simulation – no device action, no Hermes call.",
+        "data": {
+          "test_sentence": "Test sentence"
+        },
+        "data_description": {
+          "test_sentence": "Only the router decision is checked, not whether Home Assistant would handle the sentence locally. The sentence is not stored."
+        },
+        "submit": "Test request"
+      },
+      "test_result": {
+        "title": "Result (simulation)",
+        "description": "**Route:** {route}\n\n**Rule ID:** `{rule}`\n\n**Why?** {reason}\n\n**Answer / forwarding:** {answer}",
+        "menu_options": {
+          "test": "New request",
+          "init": "Back to overview"
+        }
+      },
+      "statistics": {
+        "title": "Runtime statistics",
+        "description": "{summary}",
+        "menu_options": {
+          "statistics_details": "Technical details",
+          "reset_confirm": "Reset counters …",
+          "init": "Back to overview"
+        }
+      },
+      "statistics_details": {
+        "title": "Technical details",
+        "description": "{details}\n\nRouter {router_version}",
+        "menu_options": {
+          "statistics": "Back to statistics",
+          "init": "Back to overview"
+        }
+      },
+      "reset_confirm": {
+        "title": "Reset counters?",
+        "description": "All runtime counters are set to 0. Mode and settings stay unchanged. This cannot be undone.",
+        "menu_options": {
+          "reset_execute": "Reset counters",
+          "statistics": "Cancel"
+        }
+      }
+    },
+    "error": {
+      "invalid_mode": "Unknown mode. Choose Off, Observe or Active.",
+      "empty_test_sentence": "Please enter a test sentence."
+    }
+  },
+  "selector": {
+    "mode": {
+      "options": {
+        "off": "Off – Hermes works as without the router",
+        "observe": "Observe – count only, answers unchanged",
+        "active": "Active – short router answer for device and status requests"
+      }
+    }
+  }
+}

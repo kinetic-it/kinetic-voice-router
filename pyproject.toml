@@ -1,0 +1,15 @@
+# Nur Werkzeug-Konfiguration; dieses Repo baut kein Python-Paket.
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ASYNC240", "S101", "S104", "S105", "S106", "S404", "S603"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
