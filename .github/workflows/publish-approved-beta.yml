@@ -89,7 +89,7 @@ jobs:
           local intent preference enabled. Read [docs/MIGRATION.md](https://github.com/kinetic-it/kinetic-voice-router/blob/main/docs/MIGRATION.md).
 
           **Checks:** 142 router tests, 169 integration tests with fake Companion, HACS,
-          hassfest, lint, public audit, independent Werkstatt run. HAOS with 0.5.0b1 already
+          hassfest, lint, public audit, and independent local validation. HAOS with 0.5.0b1 already
           confirmed Companion reachability, **but the new 0.5.0b2 agent has not yet passed
           real conversation/inference testing**. Experimental; not for safety-critical or
           unattended use. MIT (personal/commercial use permitted, no warranty).
