@@ -2,7 +2,8 @@
 
 Gespeichert wird je Conversation-ID hoechstens:
 - die letzte bereinigte FailureSummary (Code, Quelle, monotone Zeit),
-- die Art einer offenen Rueckfrage.
+- die Art einer offenen Router-Rueckfrage,
+- ein kurzes Zeitfenster fuer eine offene Chat-Rueckfrage (ohne Wortlaut).
 
 Kein Wortlaut, keine Entitaet, keine Persistenz ueber Neustarts.
 Ohne Conversation-ID wird nichts gespeichert.
