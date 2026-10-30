@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from .model import HA_ONLY_CODES, ClarificationKind, FailureCode, FailureSource, FailureSummary
 
 DEFAULT_TTL_SECONDS = 120.0
+CHAT_FOLLOWUP_TTL_SECONDS = 60.0
 MAX_SESSIONS = 64
 
 
@@ -25,6 +26,7 @@ class _Entry:
     failure: FailureSummary | None = None
     clarification: ClarificationKind | None = None
     clarification_at: float = 0.0
+    chat_followup_at: float | None = None
 
 
 class SessionStore:
@@ -95,6 +97,30 @@ class SessionStore:
         kind = entry.clarification
         entry.clarification = None
         return kind if self._fresh(entry.clarification_at) else None
+
+    def set_chat_followup(self, conversation_id: str | None) -> bool:
+        """Arm a short, single-use chat follow-up without storing any spoken text."""
+        if not _valid_id(conversation_id):
+            return False
+        self._entry(conversation_id).chat_followup_at = self._clock()
+        return True
+
+    def pop_chat_followup(self, conversation_id: str | None) -> bool:
+        """Consume the next follow-up once; never revive an expired question."""
+        if not _valid_id(conversation_id):
+            return False
+        entry = self._entries.get(conversation_id)
+        if entry is None:
+            return False
+        at = entry.chat_followup_at
+        entry.chat_followup_at = None
+        return at is not None and 0 <= self._clock() - at <= min(
+            self._ttl, CHAT_FOLLOWUP_TTL_SECONDS
+        )
+
+    def clear_chat_followup(self, conversation_id: str | None) -> None:
+        if _valid_id(conversation_id) and conversation_id in self._entries:
+            self._entries[conversation_id].chat_followup_at = None
 
     def clear_clarification(self, conversation_id: str | None) -> None:
         if _valid_id(conversation_id) and conversation_id in self._entries:
