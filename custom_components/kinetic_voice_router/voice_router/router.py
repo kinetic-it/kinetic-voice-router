@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from . import responses
-from .classify import Kind, classify, normalize
+from .classify import Kind, classify, is_device_term, normalize
 from .model import (
     Clarification,
     ClarificationKind,
@@ -164,6 +164,30 @@ def route(
         )
 
     kind = result.kind
+    # A brief reply to a *verified* prior conversational question can reach Hermes.
+    # Explicit control/status requests are never included; device-like fragments
+    # and confirmations without a question remain on the existing safe path.
+    if (
+        route_input.chat_followup
+        and kind in (Kind.FRAGMENT, Kind.CONFIRM, Kind.DECLINE)
+        and len(normalized.split()) <= 2
+        and not any(is_device_term(token) for token in normalized.split())
+    ):
+        if len(normalized) == 1 and normalized.isalpha():
+            return _decision(
+                Lane.UNKNOWN,
+                ReasonCode.CHAT_FOLLOWUP_UNCLEAR,
+                "R-FOLLOWUP-STT",
+                responses.CHAT_FOLLOWUP_UNCLEAR,
+            )
+        return _decision(
+            Lane.CHAT,
+            ReasonCode.CHAT_FOLLOWUP,
+            "R-FOLLOWUP-CHAT",
+            None,
+            may_call_hermes=True,
+        )
+
     if kind is Kind.EXPLAIN_REQUEST:
         return _explain(store, cid, result.rule_id)
 
