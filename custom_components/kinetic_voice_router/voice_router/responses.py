@@ -11,6 +11,7 @@ NOT_EXECUTED = "Das konnte ich gerade nicht ausführen."
 CAPABILITY_UNSURE = "Ob das geht, kann ich hier nicht sicher sagen."
 CONFIRMATION_NOT_EXECUTABLE = "Ausführen kann ich das von hier aus nicht."
 STATUS_NOT_AVAILABLE = "Den Gerätezustand kann ich von hier aus nicht abfragen."
+CHAT_FOLLOWUP_UNCLEAR = "Ich habe dich nicht richtig verstanden. Kannst du das wiederholen?"
 UNVERIFIED_SYSTEM_CLAIM = "Das kann ich gerade nicht sicher beantworten."
 TOO_LONG_TO_SPEAK = (
     "Das ist zu ausführlich für eine gesprochene Antwort. Frag bitte gezielter nach."

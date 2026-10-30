@@ -26,7 +26,11 @@ from custom_components.kinetic_voice_router.const import (
     CONF_VERIFY_TLS,
     DOMAIN,
 )
-from custom_components.kinetic_voice_router.voice_router import FailureCode, responses
+from custom_components.kinetic_voice_router.voice_router import (
+    ClarificationKind,
+    FailureCode,
+    responses,
+)
 
 WARP = "Ist mein imaginärer Warp-Antrieb eingeschaltet?"
 EXPLAIN = "Kannst du mir erklären, wie ich die Lampe einschalten kann?"
@@ -246,6 +250,71 @@ async def test_unsupported_language_is_answered_by_the_router(hass, companion):
     result = await ask(entity, KNOWLEDGE, language="fr")
     assert result.response.speech == responses.UNSUPPORTED_LANGUAGE
     assert inference_calls(companion) == 0
+
+
+# --- Spoken follow-ups in a short, existing HA conversation ----------------------------------
+
+
+async def test_active_short_answer_reaches_hermes_in_same_chat_session(hass, companion):
+    _, entity = await load(hass, "active")
+    companion.answers = ["Trinkst du lieber Kaffee oder Tee?", "Tee ist eine gute Wahl."]
+    log = ChatLog(conversation_id="coffee-chat")
+    first = await ask(entity, "Frag mich ob ich Kaffee oder Tee mag.", cid="coffee-chat", log=log)
+    assert first.response.speech == "Trinkst du lieber Kaffee oder Tee?"
+    second = await ask(entity, "Tee", cid="coffee-chat", log=log)
+    assert second.response.speech == "Tee ist eine gute Wahl."
+    assert inference_calls(companion) == 2
+    body = companion.inference_bodies[1]
+    assert body["conversation_id"] == "coffee-chat"
+    assert body["messages"][-2] == {"role": "assistant", "content": first.response.speech}
+    assert body["messages"][-1] == {"role": "user", "content": "Tee"}
+
+
+async def test_active_stt_one_letter_requests_repeat_then_accepts_answer(hass, companion):
+    _, entity = await load(hass, "active")
+    companion.answers = ["Trinkst du lieber Kaffee oder Tee?", "Alles klar, Tee."]
+    log = ChatLog(conversation_id="stt-chat")
+    await ask(entity, "Frag mich etwas.", cid="stt-chat", log=log)
+    failed = await ask(entity, "T.", cid="stt-chat", log=log)
+    assert failed.response.speech == responses.CHAT_FOLLOWUP_UNCLEAR
+    assert inference_calls(companion) == 1
+    understood = await ask(entity, "Tee", cid="stt-chat", log=log)
+    assert understood.response.speech == "Alles klar, Tee."
+    assert inference_calls(companion) == 2
+
+
+async def test_active_followup_cannot_execute_or_forward_device_actions(hass, companion):
+    _, entity = await load(hass, "active")
+    companion.answers = ["Trinkst du lieber Kaffee oder Tee?"]
+    log = ChatLog(conversation_id="safe-chat")
+    await ask(entity, "Frag mich etwas.", cid="safe-chat", log=log)
+    blocked = await ask(entity, "Schalte das Licht an", cid="safe-chat", log=log)
+    assert blocked.response.speech == responses.NOT_EXECUTED
+    assert inference_calls(companion) == 1
+
+
+async def test_active_device_question_does_not_arm_chat_followup(hass, companion):
+    entry, entity = await load(hass, "active")
+    companion.answers = ["Welche Lampe meinst du?"]
+    log = ChatLog(conversation_id="device-chat")
+    await ask(entity, KNOWLEDGE, cid="device-chat", log=log)
+    assert not entry.runtime_data.bridge.store.pop_chat_followup("device-chat")
+    result = await ask(entity, "Ja", cid="device-chat", log=log)
+    assert result.response.speech == responses.NOT_UNDERSTOOD
+    assert inference_calls(companion) == 1
+
+
+async def test_active_no_question_no_cross_session_and_missing_history(hass, companion):
+    entry, entity = await load(hass, "active")
+    companion.answers = ["Eine Antwort ohne Frage."]
+    log = ChatLog(conversation_id="c1")
+    await ask(entity, KNOWLEDGE, cid="c1", log=log)
+    assert not entry.runtime_data.bridge.store.pop_chat_followup("c1")
+    result = await ask(entity, "Tee", cid="c1", log=log)
+    assert (
+        result.response.speech == responses.CLARIFICATION_TEXT[ClarificationKind.QUESTION_OR_DEVICE]
+    )
+    assert inference_calls(companion) == 1
 
 
 # --- Hermes failures in every mode -------------------------------------------------------------
