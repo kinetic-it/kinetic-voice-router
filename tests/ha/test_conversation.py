@@ -311,9 +311,9 @@ async def test_active_no_question_no_cross_session_and_missing_history(hass, com
     await ask(entity, KNOWLEDGE, cid="c1", log=log)
     assert not entry.runtime_data.bridge.store.pop_chat_followup("c1")
     result = await ask(entity, "Tee", cid="c1", log=log)
-    assert result.response.speech == responses.CLARIFICATION_TEXT[
-        ClarificationKind.QUESTION_OR_DEVICE
-    ]
+    assert (
+        result.response.speech == responses.CLARIFICATION_TEXT[ClarificationKind.QUESTION_OR_DEVICE]
+    )
     assert inference_calls(companion) == 1
 
 
