@@ -594,9 +594,18 @@ class T19aChatFollowup(unittest.TestCase):
 
     def test_device_and_action_followups_cannot_bypass_guards(self):
         for text in (
-            "Licht", "Steckdose", "Ja Gerät", "Schalte das Licht ein",
-            "Licht an", "Ist mein Warp-Antrieb eingeschaltet?",
-            "Mach", "Mach das", "Ja mach", "Schalten", "Stopp", "Aus",
+            "Licht",
+            "Steckdose",
+            "Ja Gerät",
+            "Schalte das Licht ein",
+            "Licht an",
+            "Ist mein Warp-Antrieb eingeschaltet?",
+            "Mach",
+            "Mach das",
+            "Ja mach",
+            "Schalten",
+            "Stopp",
+            "Aus",
         ):
             with self.subTest(text=text):
                 d = _route(text, SessionStore(), chat_followup=True)
