@@ -1,4 +1,4 @@
-# Adaptive Speech Memory (ASM) — WI-0181 / Issue #4
+# Adaptive Speech Memory (ASM) — Issue #4
 
 Status: **experimental core only**, no HA option, storage, automatic learning or
 live routing yet. Release **v0.5.0b2** is unaffected. This design is public and
@@ -44,7 +44,7 @@ or the router's safety filters.
 
 ## Planned integration gates (separate changes before any beta)
 
-1. Independent Werkstatt test at exact SHA against the **real**
+1. Independent development-environment test at exact SHA against the **real**
    `voice_router.classify`, existing router tests and CI; review ambiguous
    classification and blocklists against representative device names.
 2. HA **opt-in** setting and read/delete/reset UI; default disabled, all
@@ -62,7 +62,7 @@ or the router's safety filters.
    unknown device names, "ja mach das", free conversational questions,
    options lifecycle, stop/restart and full output-safety regression.
 6. Explicit Owner gate for merge/release/HAOS snapshot-backed Echo live pilot.
-   Never silently deploy a beta into VM200.
+   Never silently deploy a beta into a live Home Assistant installation.
 
 ## Verification
 
@@ -75,8 +75,7 @@ python scripts/audit_public.py
 ```
 
 **Current local preliminary result:** 11 synthetic tests PASS against a small
-classifier stand-in. Full real-repo tests, CI, native HA tests and VM205
-Werkstatt verification still required. Do not interpret the preliminary result
+classifier stand-in. Full real-repo tests, CI, native HA tests and independent environment verification still required. Do not interpret the preliminary result
 as a working or installable ASM feature.
 
 Owner preference: *understand → inspect → isolate → change → validate*; avoid
