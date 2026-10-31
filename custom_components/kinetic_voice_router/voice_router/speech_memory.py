@@ -132,8 +132,7 @@ class SpeechMemory:
         return {
             "schema": STORE_SCHEMA,
             "rules": [
-                {"heard": rule.heard, "intended": rule.intended}
-                for rule in self._rules.values()
+                {"heard": rule.heard, "intended": rule.intended} for rule in self._rules.values()
             ],
         }
 
