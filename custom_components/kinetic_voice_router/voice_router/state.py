@@ -3,9 +3,13 @@
 Gespeichert wird je Conversation-ID hoechstens:
 - die letzte bereinigte FailureSummary (Code, Quelle, monotone Zeit),
 - die Art einer offenen Router-Rueckfrage,
-- ein kurzes Zeitfenster fuer eine offene Chat-Rueckfrage (ohne Wortlaut).
+- ein kurzes Zeitfenster fuer eine offene Chat-Rueckfrage (ohne Wortlaut),
+- ein offener Lernvorschlag der Adaptive Speech Memory: genau ein Wortpaar
+  (falsch erkannt -> gemeint), kein Satz.
 
-Kein Wortlaut, keine Entitaet, keine Persistenz ueber Neustarts.
+Alle offenen Dialogzustaende teilen ein Zeitfenster (DIALOGUE_TTL_SECONDS) und
+schliessen einander aus: Wer eine neue Rueckfrage stellt, verwirft die alte.
+Keine Saetze, keine Entitaet, keine Persistenz ueber Neustarts.
 Ohne Conversation-ID wird nichts gespeichert.
 """
 
@@ -18,7 +22,9 @@ from dataclasses import dataclass
 from .model import HA_ONLY_CODES, ClarificationKind, FailureCode, FailureSource, FailureSummary
 
 DEFAULT_TTL_SECONDS = 120.0
-CHAT_FOLLOWUP_TTL_SECONDS = 60.0
+# One window for every open dialogue state (chat follow-up, learning proposal).
+DIALOGUE_TTL_SECONDS = 60.0
+CHAT_FOLLOWUP_TTL_SECONDS = DIALOGUE_TTL_SECONDS
 MAX_SESSIONS = 64
 
 
@@ -28,6 +34,8 @@ class _Entry:
     clarification: ClarificationKind | None = None
     clarification_at: float = 0.0
     chat_followup_at: float | None = None
+    proposal: tuple[str, str] | None = None  # (heard, intended), learning proposal
+    proposal_at: float = 0.0
 
 
 class SessionStore:
@@ -86,6 +94,7 @@ class SessionStore:
         entry = self._entry(conversation_id)
         entry.clarification = kind
         entry.clarification_at = self._clock()
+        entry.proposal = None  # the router's own question replaces a learning proposal
         return True
 
     def pop_clarification(self, conversation_id: str | None) -> ClarificationKind | None:
@@ -103,8 +112,39 @@ class SessionStore:
         """Arm a short, single-use chat follow-up without storing any spoken text."""
         if not _valid_id(conversation_id):
             return False
-        self._entry(conversation_id).chat_followup_at = self._clock()
+        entry = self._entry(conversation_id)
+        entry.chat_followup_at = self._clock()
+        entry.proposal = None  # a newer question replaces an open learning proposal
         return True
+
+    def set_proposal(self, conversation_id: str | None, heard: str, intended: str) -> bool:
+        """Remember ONE pending learning proposal; replaces any other open question."""
+        if not _valid_id(conversation_id):
+            return False
+        entry = self._entry(conversation_id)
+        entry.proposal = (heard, intended)
+        entry.proposal_at = self._clock()
+        entry.chat_followup_at = None
+        entry.clarification = None
+        return True
+
+    def pop_proposal(self, conversation_id: str | None) -> tuple[str, str] | None:
+        """Consume the proposal once; an expired proposal is gone for good."""
+        if not _valid_id(conversation_id):
+            return None
+        entry = self._entries.get(conversation_id)
+        if entry is None or entry.proposal is None:
+            return None
+        proposal = entry.proposal
+        entry.proposal = None
+        fresh = 0 <= self._clock() - entry.proposal_at <= min(self._ttl, DIALOGUE_TTL_SECONDS)
+        return proposal if fresh else None
+
+    def has_proposal(self, conversation_id: str | None) -> bool:
+        if not _valid_id(conversation_id):
+            return False
+        entry = self._entries.get(conversation_id)
+        return entry is not None and entry.proposal is not None
 
     def pop_chat_followup(self, conversation_id: str | None) -> bool:
         """Consume the next follow-up once; never revive an expired question."""
@@ -118,6 +158,11 @@ class SessionStore:
         return at is not None and 0 <= self._clock() - at <= min(
             self._ttl, CHAT_FOLLOWUP_TTL_SECONDS
         )
+
+    def clear_proposals(self) -> None:
+        """Drop every open learning proposal (learning switched off or lexicon reset)."""
+        for entry in self._entries.values():
+            entry.proposal = None
 
     def clear_chat_followup(self, conversation_id: str | None) -> None:
         if _valid_id(conversation_id) and conversation_id in self._entries:

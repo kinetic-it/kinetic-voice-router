@@ -24,17 +24,18 @@ Home Assistant handle everything it understands locally, and takes care of the r
 
 | | |
 |---|---|
-| Version in this repository | `0.5.0b2` (under review, **not published**); `v0.5.0b1` is a published experimental beta |
-| Tested against | Home Assistant 2026.9.x **contract stubs** and a local fake companion. No live Home Assistant, HACS or hardware run has been done for this version. |
+| Published | `v0.5.0b2` (experimental pre-release, 2026-10-30); `v0.5.0b1` before it |
+| In development | Adaptive Speech Memory (optional, off by default) and short conversational follow-ups — **not released** |
+| Tested against | Home Assistant 2026.9.x **contract stubs** and a local fake companion in CI; the maintainer ran a real Home Assistant conversation test with `v0.5.0b2`. The development features above have **not** been tested on a real system yet. |
 | Hermes Companion API | v1 (`/health`, `/v1/capabilities`, `/v1/inference`), bearer token |
 | Licence | MIT, personal **and commercial** use permitted, **without warranty** |
 
 ## Installation
 
-**Experimental beta only.** The published pre-release `v0.5.0b1` may be installed by
+**Experimental beta only.** The published pre-release `v0.5.0b2` may be installed by
 adding `https://github.com/kinetic-it/kinetic-voice-router` as a custom *Integration*
-repository in HACS, then explicitly selecting the beta release. The proposed
-`v0.5.0b2` compatibility fix is not released yet; do not install its development branch.
+repository in HACS, then explicitly selecting the beta release. Do not install
+development branches.
 There is no stable or production-supported release. HACS offers updates when a new release
 is published, and installation requires confirmation. Before upgrading an existing 0.4.x
 instance, back up Home Assistant and read [docs/MIGRATION.md](docs/MIGRATION.md).
@@ -52,6 +53,30 @@ instance, back up Home Assistant and read [docs/MIGRATION.md](docs/MIGRATION.md)
 
 *Reconfigure* (three-dots menu) changes URL and TLS check; *Configure → Hermes connection*
 shows a live status. Re-authentication starts automatically when the token is rejected.
+
+## Adaptive Speech Memory (optional, in development)
+
+Speech recognition sometimes mishears names ("Mulahn" instead of "Mulan"). With
+*Configure → Speech memory → Learn speech corrections* switched on (default **off**) and
+mode **Active**:
+
+1. You say "No, I meant Mulan" (German: „Nein, ich meinte Mulan“). The router finds the
+   misheard word in your previous sentence, answers your **original** request with the
+   corrected word, and asks once: „Soll ich mir merken, dass mit „Mulahn“ „Mulan“ gemeint ist?“
+2. Only an explicit **yes** in the same conversation within 60 seconds stores the pair.
+   No, silence, another topic or another conversation stores nothing.
+3. Later, harmless conversation containing the misheard word reaches Hermes corrected,
+   without asking again.
+
+Rules: only pairs are stored (misheard → meant, category, date), never sentences, audio,
+conversation IDs or people. Device, room, control, status and confirmation words
+(„an“, „aus“, „stopp“, „Ja, mach das“, „Licht“, „Wohnzimmer“ …) are never learned or
+replaced, and nothing is ever rewritten in a command or status request. Single letters such
+as „T.“ are never learned; after a question Nabu asks again („Ich habe dich nicht richtig
+verstanden. Kaffee oder Tee?“). If the misheard word is not clearly identifiable, nothing
+is proposed. Common words are stored only as *ambiguous* and never replaced automatically.
+The list can be viewed, extended, edited, deleted and reset (with confirmation) under
+*Configure → Speech memory*. Details: [docs/ADAPTIVE-SPEECH-MEMORY.md](docs/ADAPTIVE-SPEECH-MEMORY.md).
 
 ## Safety and privacy
 
@@ -112,9 +137,10 @@ Home Assistant erledigt zuerst alles, was es lokal versteht. Was übrig bleibt:
 - im Modus *Aktiv* werden Hermes-Antworten geprüft, damit unbelegte Behauptungen
   („habe eingeschaltet“, „Home Assistant ist ausgefallen“) nicht als Tatsache gesprochen werden.
 
-**Status:** Version `0.5.0b1`, nicht veröffentlicht, experimentell, ohne Gewähr. Nur gegen
-Vertrags-Stubs und einen lokalen Fake-Companion getestet, nicht gegen ein echtes Home Assistant.
-**Installation:** noch nicht verfügbar (siehe oben). **Einrichtung:** Integration hinzufügen,
+**Status:** Veröffentlicht ist `v0.5.0b2` als experimentelle Vorabversion, ohne Gewähr.
+In Entwicklung (nicht veröffentlicht): Sprachwörterbuch (Adaptive Speech Memory, optional,
+standardmäßig aus) und kurze Folgeantworten im Gespräch.
+**Installation:** über HACS als benutzerdefiniertes Integrations-Repository (siehe oben). **Einrichtung:** Integration hinzufügen,
 Hermes-URL und Token eingeben, Verbindungstest abwarten, Agent in der Assist-Pipeline wählen,
 Betriebsart unter *Konfigurieren* festlegen (Standard: Aus). Migration von 0.4.x:
 [docs/MIGRATION.md](docs/MIGRATION.md).

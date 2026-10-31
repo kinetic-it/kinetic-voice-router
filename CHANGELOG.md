@@ -6,6 +6,26 @@ pre-releases and **not** a recommendation for production use.
 
 ## [Unreleased]
 
+### Added
+- **Adaptive Speech Memory** (optional, off by default, mode Active only): after a
+  correction such as „Nein, ich meinte Mulan“ the original request is answered with the
+  corrected word and Nabu asks once whether to remember the pair. Only an explicit „Ja“ in
+  the same conversation within 60 seconds stores it; confirmed pairs are then applied to
+  harmless conversation. Device, room, control, status and confirmation words are never
+  learned or replaced; commands and status requests are never rewritten.
+- Options page *Speech memory*: switch, overview, add, edit, delete, reset with
+  confirmation (German and English).
+- Local persistence with Home Assistant `Store` (versioned, atomic, private, 200 entries);
+  unreadable or invalid data is locked and left untouched until an explicit reset.
+- Diagnostics report only the switch state, storage state and number of entries.
+
+### Changed
+- One shared, single-use 60-second window for open dialogue states (follow-up question,
+  learning proposal, router clarification); a new question replaces the old one.
+- After an unclear one-letter reply („T.“) Nabu repeats the short question from Home
+  Assistant's chat log („… Kaffee oder Tee?“) instead of a generic request.
+- A reply ending with „;“ no longer counts as a question.
+
 ### Fixed
 - In Active mode, a short answer to an actual prior conversational question now reaches
   Hermes with the existing Home Assistant chat history instead of being treated as a new

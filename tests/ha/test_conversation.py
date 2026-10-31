@@ -276,7 +276,10 @@ async def test_active_stt_one_letter_requests_repeat_then_accepts_answer(hass, c
     log = ChatLog(conversation_id="stt-chat")
     await ask(entity, "Frag mich etwas.", cid="stt-chat", log=log)
     failed = await ask(entity, "T.", cid="stt-chat", log=log)
-    assert failed.response.speech == responses.CHAT_FOLLOWUP_UNCLEAR
+    # The short question is repeated from HA's ChatLog instead of a generic request.
+    assert failed.response.speech == (
+        "Ich habe dich nicht richtig verstanden. Trinkst du lieber Kaffee oder Tee?"
+    )
     assert inference_calls(companion) == 1
     understood = await ask(entity, "Tee", cid="stt-chat", log=log)
     assert understood.response.speech == "Alles klar, Tee."
@@ -414,4 +417,7 @@ async def test_the_agent_never_acts_on_home_assistant(hass, companion):
         "session",
         "companion",
         "session_verify_ssl",
+        "storage_files",
+        "storage_writes",
+        "repair_issues",
     }

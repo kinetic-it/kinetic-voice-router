@@ -36,7 +36,12 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from . import runtime_stats
 from .const import (
+    CONF_CATEGORY,
+    CONF_ENTRY,
+    CONF_HEARD,
+    CONF_INTENDED,
     CONF_MODE,
+    CONF_SPEECH_MEMORY,
     CONF_TEST_SENTENCE,
     CONF_TOKEN,
     CONF_URL,
@@ -49,6 +54,7 @@ from .const import (
     CONN_UNREACHABLE,
     CONN_UNSUPPORTED_API,
     DEFAULT_MODE,
+    DEFAULT_SPEECH_MEMORY,
     DEFAULT_VERIFY_TLS,
     DOMAIN,
     INFERENCE_TIMEOUT,
@@ -65,10 +71,12 @@ from .texts import (
     REASONS,
     ROUTE_LABELS,
     language,
+    speech_memory_overview,
     statistics_details,
     statistics_summary,
 )
 from .voice_router import ROUTER_VERSION, operating_mode, simulate
+from .voice_router.speech_memory import MAX_ENTRIES, Category, Entry, Source
 
 # Probe result -> form error key (strings.json "config.error").
 _PROBE_ERRORS = {
@@ -227,6 +235,9 @@ class KineticVoiceRouterOptionsFlow(OptionsFlow):
         # every other statistics step and consumed by the reset itself. HA already only
         # accepts next_step_id values offered by the current menu; this is defence in depth.
         self._reset_armed = False
+        # One-shot approval to wipe the speech memory, same pattern as the counters.
+        self._asm_reset_armed = False
+        self._asm_edit_key: str | None = None
 
     def _mode(self) -> str:
         return operating_mode(self.config_entry.options).value
@@ -246,9 +257,10 @@ class KineticVoiceRouterOptionsFlow(OptionsFlow):
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         self._reset_armed = False
+        self._asm_reset_armed = False
         return self.async_show_menu(
             step_id="init",
-            menu_options=["settings", "connection", "test", "statistics"],
+            menu_options=["settings", "connection", "speech_memory", "test", "statistics"],
             description_placeholders=self._info(),
         )
 
@@ -311,7 +323,10 @@ class KineticVoiceRouterOptionsFlow(OptionsFlow):
             # A submission without the field keeps the stored mode.
             mode = user_input.get(CONF_MODE, current)
             if isinstance(mode, str) and mode in MODES:
-                return self.async_create_entry(title="", data={CONF_MODE: mode})
+                data: dict[str, Any] = {CONF_MODE: mode}
+                if CONF_SPEECH_MEMORY in self.config_entry.options:
+                    data[CONF_SPEECH_MEMORY] = self.config_entry.options[CONF_SPEECH_MEMORY]
+                return self.async_create_entry(title="", data=data)
             errors["base"] = "invalid_mode"
         return self.async_show_form(
             step_id="settings",
@@ -329,6 +344,221 @@ class KineticVoiceRouterOptionsFlow(OptionsFlow):
             errors=errors,
             description_placeholders={"mode": self._info()["mode"]},
         )
+
+    # --- Adaptive Speech Memory (Sprachwörterbuch) ---------------------------------------
+
+    def _speech(self):
+        runtime = getattr(self.config_entry, "runtime_data", None)
+        return getattr(runtime, "speech", None)
+
+    def _speech_enabled(self) -> bool:
+        return self.config_entry.options.get(CONF_SPEECH_MEMORY, DEFAULT_SPEECH_MEMORY) is True
+
+    async def async_step_speech_memory(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Overview: switch state, storage state and every confirmed pair (no sentences)."""
+        self._asm_reset_armed = False
+        speech = self._speech()
+        lang = language(self.hass)
+        if speech is None:
+            return self.async_show_menu(step_id="speech_memory_unavailable", menu_options=["init"])
+        options = ["speech_memory_toggle", "speech_memory_add"]
+        if len(speech.memory):
+            options += ["speech_memory_edit", "speech_memory_delete"]
+        options += ["speech_memory_reset_confirm", "init"]
+        return self.async_show_menu(
+            step_id="speech_memory",
+            menu_options=options,
+            description_placeholders={
+                "overview": speech_memory_overview(
+                    lang,
+                    enabled=self._speech_enabled(),
+                    mode_active=self._mode() == "active",
+                    status=speech.status,
+                    entries=speech.memory.entries(),
+                    limit=MAX_ENTRIES,
+                )
+            },
+        )
+
+    async def async_step_speech_memory_unavailable(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return await self.async_step_init()
+
+    async def async_step_speech_memory_toggle(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Opt-in switch. Saving stores it as an option (the entry reloads)."""
+        if user_input is not None:
+            enabled = user_input.get(CONF_SPEECH_MEMORY) is True
+            return self.async_create_entry(
+                title="",
+                data={CONF_MODE: self._mode(), CONF_SPEECH_MEMORY: enabled},
+            )
+        return self.async_show_form(
+            step_id="speech_memory_toggle",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_SPEECH_MEMORY, default=self._speech_enabled()
+                    ): selector.BooleanSelector()
+                }
+            ),
+        )
+
+    def _category_selector(self) -> selector.SelectSelector:
+        return selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[c.value for c in Category],
+                translation_key="category",
+                mode=selector.SelectSelectorMode.DROPDOWN,
+            )
+        )
+
+    def _entry_selector(self) -> selector.SelectSelector:
+        speech = self._speech()
+        return selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[
+                    {"value": e.key, "label": f"{e.heard} → {e.intended}"}
+                    for e in speech.memory.entries()
+                ],
+                mode=selector.SelectSelectorMode.DROPDOWN,
+            )
+        )
+
+    async def async_step_speech_memory_add(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        speech = self._speech()
+        if speech is None:
+            return await self.async_step_speech_memory()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                category = Category(user_input.get(CONF_CATEGORY, Category.NAME.value))
+            except ValueError:
+                category = Category.NAME
+            result = await speech.async_add(
+                user_input.get(CONF_HEARD),
+                user_input.get(CONF_INTENDED),
+                category=category,
+                source=Source.MANUAL,
+            )
+            if isinstance(result, Entry):
+                return await self.async_step_speech_memory()
+            errors["base"] = f"asm_{result.value}"
+        defaults = user_input or {}
+        return self.async_show_form(
+            step_id="speech_memory_add",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_HEARD, default=defaults.get(CONF_HEARD, "")): (
+                        selector.TextSelector(selector.TextSelectorConfig())
+                    ),
+                    vol.Required(CONF_INTENDED, default=defaults.get(CONF_INTENDED, "")): (
+                        selector.TextSelector(selector.TextSelectorConfig())
+                    ),
+                    vol.Required(
+                        CONF_CATEGORY, default=defaults.get(CONF_CATEGORY, Category.NAME.value)
+                    ): self._category_selector(),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_speech_memory_edit(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Step 1: pick the pair to edit."""
+        speech = self._speech()
+        if speech is None or not len(speech.memory):
+            return await self.async_step_speech_memory()
+        if user_input is not None and speech.memory.get(user_input.get(CONF_ENTRY)) is not None:
+            self._asm_edit_key = user_input[CONF_ENTRY]
+            return await self.async_step_speech_memory_edit_entry()
+        return self.async_show_form(
+            step_id="speech_memory_edit",
+            data_schema=vol.Schema({vol.Required(CONF_ENTRY): self._entry_selector()}),
+        )
+
+    async def async_step_speech_memory_edit_entry(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Step 2: new meaning and category; the misheard phrase itself stays the key."""
+        speech = self._speech()
+        entry = speech.memory.get(self._asm_edit_key) if speech is not None else None
+        if entry is None:
+            return await self.async_step_speech_memory()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                category = Category(user_input.get(CONF_CATEGORY, entry.category.value))
+            except ValueError:
+                category = entry.category
+            result = await speech.async_update(
+                entry.heard, user_input.get(CONF_INTENDED), category=category
+            )
+            if isinstance(result, Entry):
+                self._asm_edit_key = None
+                return await self.async_step_speech_memory()
+            errors["base"] = f"asm_{result.value}"
+        return self.async_show_form(
+            step_id="speech_memory_edit_entry",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_INTENDED, default=entry.intended): selector.TextSelector(
+                        selector.TextSelectorConfig()
+                    ),
+                    vol.Required(
+                        CONF_CATEGORY, default=entry.category.value
+                    ): self._category_selector(),
+                }
+            ),
+            errors=errors,
+            description_placeholders={"heard": entry.heard},
+        )
+
+    async def async_step_speech_memory_delete(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        speech = self._speech()
+        if speech is None or not len(speech.memory):
+            return await self.async_step_speech_memory()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if await speech.async_delete(user_input.get(CONF_ENTRY)):
+                return await self.async_step_speech_memory()
+            errors["base"] = "asm_read_only" if not speech.writable else "asm_unknown_entry"
+        return self.async_show_form(
+            step_id="speech_memory_delete",
+            data_schema=vol.Schema({vol.Required(CONF_ENTRY): self._entry_selector()}),
+            errors=errors,
+        )
+
+    async def async_step_speech_memory_reset_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Explicit confirmation page; the only way to empty (or repair) the lexicon."""
+        self._asm_reset_armed = True
+        return self.async_show_menu(
+            step_id="speech_memory_reset_confirm",
+            menu_options=["speech_memory_reset_execute", "speech_memory"],
+        )
+
+    async def async_step_speech_memory_reset_execute(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        speech = self._speech()
+        if self._asm_reset_armed and speech is not None:
+            self._asm_reset_armed = False
+            await speech.async_reset()
+            runtime = getattr(self.config_entry, "runtime_data", None)
+            if runtime is not None:
+                runtime.bridge.store.clear_proposals()
+        return await self.async_step_speech_memory()
 
     # --- Testanfrage ------------------------------------------------------------------
 

@@ -20,11 +20,13 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
     CONF_MODE,
+    CONF_SPEECH_MEMORY,
     CONF_TOKEN,
     CONF_URL,
     CONF_VERIFY_TLS,
     CONN_AUTH_FAILED,
     CONN_OK,
+    DEFAULT_SPEECH_MEMORY,
     DEFAULT_VERIFY_TLS,
     INFERENCE_TIMEOUT,
     REQUEST_TIMEOUT,
@@ -32,6 +34,7 @@ from .const import (
 )
 from .hermes_client import HermesClient, HermesError
 from .runtime import RouterRuntime
+from .speech_store import SpeechMemoryStore
 from .status import async_probe
 from .voice_router import RouterBridge, RuntimeStats, operating_mode
 
@@ -92,10 +95,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: KineticVoiceRouterConfig
     if connection.code != CONN_OK:
         # Not an error of this entry's data: retried by Home Assistant with back-off.
         raise ConfigEntryNotReady(f"Hermes Companion not usable ({connection.code})")
+    speech = SpeechMemoryStore(hass)
+    await speech.async_load()
     entry.runtime_data = RouterRuntime(
         bridge=RouterBridge.from_options(entry.options, stats=runtime_stats(hass)),
         client=client,
         connection=connection,
+        speech=speech,
+        speech_enabled=entry.options.get(CONF_SPEECH_MEMORY, DEFAULT_SPEECH_MEMORY) is True,
     )
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -105,6 +112,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: KineticVoiceRouterConfig
 
 async def async_unload_entry(hass: HomeAssistant, entry: KineticVoiceRouterConfigEntry) -> bool:
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: KineticVoiceRouterConfigEntry) -> None:
+    """The user deleted the integration: delete the learned word pairs as well."""
+    await SpeechMemoryStore(hass).async_remove()
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: KineticVoiceRouterConfigEntry) -> None:

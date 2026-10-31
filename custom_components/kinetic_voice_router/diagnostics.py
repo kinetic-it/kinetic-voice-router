@@ -45,5 +45,15 @@ async def async_get_config_entry_diagnostics(
                 runtime.connection.companion_version if runtime is not None else None
             ),
         },
+        # Speech memory: only counts and state, never the learned words themselves.
+        "speech_memory": {
+            "learning_enabled": runtime.speech_enabled if runtime is not None else None,
+            "storage_status": (
+                runtime.speech.status if runtime is not None and runtime.speech else None
+            ),
+            "entries": (
+                len(runtime.speech.memory) if runtime is not None and runtime.speech else None
+            ),
+        },
         "runtime_statistics": runtime_stats(hass).snapshot(),
     }

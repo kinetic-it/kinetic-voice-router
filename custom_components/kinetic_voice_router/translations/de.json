@@ -67,12 +67,14 @@
         "menu_options": {
           "settings": "Betriebsart",
           "connection": "Hermes-Verbindung",
+          "speech_memory": "Sprachwörterbuch",
           "test": "Testanfrage",
           "statistics": "Laufzeitstatistik"
         },
         "menu_option_descriptions": {
           "settings": "Aus, Beobachten oder Aktiv",
           "connection": "Verbindung zum Hermes-Companion prüfen",
+          "speech_memory": "Bestätigte Wortkorrekturen lernen (optional)",
           "test": "Router-Einordnung eines Satzes simulieren",
           "statistics": "Anonyme Zähler seit HA-Start"
         }
@@ -94,6 +96,81 @@
         "menu_options": {
           "connection": "Erneut prüfen",
           "init": "Zurück zur Übersicht"
+        }
+      },
+      "speech_memory": {
+        "title": "Sprachwörterbuch",
+        "description": "{overview}\n\nGespeichert werden nur bestätigte Paare (falsch erkannt → gemeint), nie Sätze, Audio oder Gesprächs-IDs. Geräte-, Raum- und Steuerwörter werden nie gelernt oder ersetzt.",
+        "menu_options": {
+          "speech_memory_toggle": "Lernen ein-/ausschalten",
+          "speech_memory_add": "Begriff hinzufügen",
+          "speech_memory_edit": "Begriff bearbeiten",
+          "speech_memory_delete": "Begriff löschen",
+          "speech_memory_reset_confirm": "Alle Begriffe zurücksetzen …",
+          "init": "Zurück zur Übersicht"
+        }
+      },
+      "speech_memory_unavailable": {
+        "title": "Sprachwörterbuch",
+        "description": "Das Sprachwörterbuch ist nur verfügbar, solange die Integration geladen ist (Hermes-Verbindung hergestellt).",
+        "menu_options": {
+          "init": "Zurück zur Übersicht"
+        }
+      },
+      "speech_memory_toggle": {
+        "title": "Sprachkorrekturen lernen",
+        "description": "Wenn eingeschaltet (und Betriebsart Aktiv), fragt der Router nach einer Korrektur wie „Nein, ich meinte Mulan“, ob er sich das Paar merken soll, speichert es nur nach einem ausdrücklichen „Ja“ und wendet bestätigte Paare auf harmlose Gespräche an. Standardmäßig aus.",
+        "data": {
+          "speech_memory": "Bestätigte Korrekturen lernen und verwenden"
+        },
+        "submit": "Speichern"
+      },
+      "speech_memory_add": {
+        "title": "Begriff hinzufügen",
+        "description": "Trage ein, was die Spracherkennung hört und was du meinst. Je 1–3 Wörter, nur Buchstaben.",
+        "data": {
+          "heard": "Erkannt als",
+          "intended": "Gemeint",
+          "category": "Kategorie"
+        },
+        "data_description": {
+          "heard": "z. B. Mulahn – mindestens 3 Buchstaben; einzelne Buchstaben werden nicht angenommen.",
+          "intended": "z. B. Mulan",
+          "category": "Mehrdeutige Begriffe werden gespeichert, aber nie automatisch ersetzt."
+        },
+        "submit": "Hinzufügen"
+      },
+      "speech_memory_edit": {
+        "title": "Begriff bearbeiten",
+        "description": "Wähle den Begriff, den du ändern möchtest.",
+        "data": {
+          "entry": "Begriff"
+        },
+        "submit": "Weiter"
+      },
+      "speech_memory_edit_entry": {
+        "title": "Begriff bearbeiten",
+        "description": "Erkannt als **{heard}**. Ändere die Bedeutung oder die Kategorie.",
+        "data": {
+          "intended": "Gemeint",
+          "category": "Kategorie"
+        },
+        "submit": "Speichern"
+      },
+      "speech_memory_delete": {
+        "title": "Begriff löschen",
+        "description": "Der gewählte Begriff wird sofort gelöscht.",
+        "data": {
+          "entry": "Begriff"
+        },
+        "submit": "Löschen"
+      },
+      "speech_memory_reset_confirm": {
+        "title": "Sprachwörterbuch zurücksetzen?",
+        "description": "Alle gelernten und manuell eingetragenen Begriffe werden gelöscht. Das repariert auch ein Wörterbuch, das nicht gelesen werden konnte. Das lässt sich nicht rückgängig machen.",
+        "menu_options": {
+          "speech_memory_reset_execute": "Alle Begriffe löschen",
+          "speech_memory": "Abbrechen"
         }
       },
       "test": {
@@ -143,7 +220,16 @@
     },
     "error": {
       "invalid_mode": "Unbekannte Betriebsart. Bitte Aus, Beobachten oder Aktiv wählen.",
-      "empty_test_sentence": "Bitte einen Testsatz eingeben."
+      "empty_test_sentence": "Bitte einen Testsatz eingeben.",
+      "asm_invalid": "Bitte 1–3 Wörter nur aus Buchstaben verwenden (höchstens 40 Zeichen).",
+      "asm_too_short": "Zu kurz: mindestens 3 Buchstaben (einzelne Buchstaben wie „T“ werden nicht angenommen).",
+      "asm_same": "Erkannt und gemeint sind gleich.",
+      "asm_protected": "Geräte-, Raum-, Steuer- und Bestätigungswörter können nicht gelernt werden.",
+      "asm_conflict": "Für diesen Begriff gibt es schon eine andere Bedeutung. Bearbeite den vorhandenen Eintrag.",
+      "asm_chain": "Das würde mit einem vorhandenen Eintrag eine Kette oder Schleife bilden.",
+      "asm_full": "Das Sprachwörterbuch ist voll. Lösche zuerst Einträge.",
+      "asm_unknown_entry": "Diesen Eintrag gibt es nicht mehr.",
+      "asm_read_only": "Das gespeicherte Wörterbuch ist gesperrt, weil es nicht gelesen werden konnte. Setze es zuerst zurück."
     }
   },
   "selector": {
@@ -152,6 +238,14 @@
         "off": "Aus – Hermes arbeitet wie ohne Router",
         "observe": "Beobachten – nur zählen, Antworten unverändert",
         "active": "Aktiv – kurze Router-Antwort bei Geräte- und Statusanfragen"
+      }
+    },
+    "category": {
+      "options": {
+        "name": "Eigenname",
+        "term": "Fachbegriff",
+        "stt": "STT-Fehlschreibung",
+        "ambiguous": "Mehrdeutig (nie automatisch)"
       }
     }
   }

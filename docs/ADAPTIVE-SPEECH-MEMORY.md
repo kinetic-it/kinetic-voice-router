@@ -1,82 +1,118 @@
-# Adaptive Speech Memory (ASM) — Issue #4
+# Adaptive Speech Memory (ASM)
 
-Status: **experimental core only**, no HA option, storage, automatic learning or
-live routing yet. Release **v0.5.0b2** is unaffected. This design is public and
-contains only synthetic utterances.
+Status: **implemented on the development branch, not released.** Off by default. Tested
+with Home Assistant contract stubs and a local fake Hermes Companion; **not yet tested on a
+real Home Assistant with real speech recognition.** All examples are synthetic.
 
-## Why this is separate from PR #3
+## What it does
 
-The HA pipeline produces text first. The Kinetic Voice Router cannot correct the
-original audio or recover a one-letter transcription such as `T.`. PR #3 addresses
-short *conversational follow-ups* and is still under review. ASM addresses
-**confirmed word-level corrections** and must not bypass PR #3's session gate
-or the router's safety filters.
+Speech recognition (for example Home Assistant Cloud STT) sometimes writes a word wrongly.
+The router cannot fix the audio, but it can learn **confirmed** word pairs and use them in
+later harmless conversation.
 
-## Implemented in this draft
+| Step | What happens |
+|---|---|
+| 1 | You: „Erzähl mir etwas über Mulan“ – STT hears „Mulahn“. Hermes answers about „Mulahn“. |
+| 2 | You: „Nein, ich meinte Mulan.“ The router finds the misheard word („Mulahn“) in your previous sentence, sends your **original request with the corrected word** to Hermes and adds one question: „Soll ich mir merken, dass mit „Mulahn“ „Mulan“ gemeint ist?“ |
+| 3 | You: „Ja“ → stored, „Gemerkt: Mit „Mulahn“ meinst du „Mulan“.“ You: „Nein“ → nothing stored. Anything else, another conversation or more than 60 seconds → the question lapses, nothing stored. |
+| 4 | Later: „Erzähl mir etwas über Mulahn“ reaches Hermes as „… Mulan“, without asking. |
 
-- Pure `voice_router/speech_memory.py` core, **not imported by the production
-  conversation entity**, no runtime behavior changes.
-- `SpeechMemory.propose(cid, heard, intended)` creates only a time-limited
-  candidate per conversation, with a 60-second TTL; no learning on its own.
-- `confirm(cid, answer)` needs an explicit affirmative answer in the **same**
-  session; a rejected, repeated, other-session or late answer does not teach.
-- `apply(text, enabled=True)` substitutes complete 3–40-letter words only,
-  only for already-classified `CHAT` / `KNOWLEDGE`, and excludes obvious
-  command/status vocabulary. Default `enabled=False`; no callsite yet.
-- `export_confirmed`/`import_confirmed` versioned data contract; only the
-  approved word pairs, never audio, transcript, conversation ID or candidates.
-  **Not yet connected to HA Store**: exporting in memory is not persistence.
-- Bounded 128 confirmed rules and 64 pending sessions, explicit deletion/clear.
-- Independent regression tests with synthetic data. All safety filtering here
-  is a *second layer*, never a substitute for Home Assistant local intents or
-  the original router.
+Recognised correction forms: „(Nein,) ich meinte X“, „ich meine X“, „gemeint war/ist X“,
+„ich sagte X“, „ich habe X gesagt“, „nicht Y, sondern X“, „X, nicht Y“ (X and Y: 1–3 words).
 
-## Non-goals of this first patch
+**The misheard word must be reliably known.** It must appear in your previous sentence; if
+you did not name it, exactly one word (or short span) there must be clearly similar to X.
+No candidate or several candidates → nothing is proposed, nothing guessed. Hermes still
+receives your words and the conversation history as before.
 
-- No online adjustment of STT, no audio feedback or re-transcription.
-- No automatic inference of an incorrect word from a transcript. A phrase like
-  “Nein, ich meinte Mulan” does not identify the incorrectly recognized word
-  without a trustworthy prior user message; do not guess.
-- No learned home device names, security-sensitive words or automatic device
-  commands. No HA service call, exposure change or direct Hermes invocation.
-- No voice-biometric recognition, shared cross-household assumptions or
-  unlimited conversation listening.
+### Short replies and „T.“
 
-## Planned integration gates (separate changes before any beta)
+After a real Hermes question (for example „Möchtest du Kaffee oder Tee?“) a short answer
+such as „Tee“ goes to Hermes with the conversation history (single-use, 60-second window,
+no text stored). A single letter such as „T.“ is never resolved; Nabu asks again with the
+question taken from Home Assistant's chat log: „Ich habe dich nicht richtig verstanden.
+Möchtest du Kaffee oder Tee?“. Single letters are never learned.
 
-1. Independent development-environment test at exact SHA against the **real**
-   `voice_router.classify`, existing router tests and CI; review ambiguous
-   classification and blocklists against representative device names.
-2. HA **opt-in** setting and read/delete/reset UI; default disabled, all
-   existing saved options preserved. Local HA `Store` persistence with size
-   limits, corruption/migration tests, and exclusion from diagnostics/logs.
-3. Explicit interactive correction dialogue: safely identify a correction
-   request and a single candidate from bounded HA ChatLog context, ask one
-   short confirmation, persist **only after consent**, then continue the
-   harmless original request without asking the user to repeat it.
-4. Integrate **after HA local-intent handling**, **before safe Hermes
-   conversation routing**; never use ASM to rewrite device operations,
-   statuses, confirmations of actions or UI command paths.
-5. Integrate with PR #3 only after both individual branches are validated;
-   test separate conversation IDs, timeout, STT `T.`, local intent priority,
-   unknown device names, "ja mach das", free conversational questions,
-   options lifecycle, stop/restart and full output-safety regression.
-6. Explicit Owner gate for merge/release/HAOS snapshot-backed Echo live pilot.
-   Never silently deploy a beta into a live Home Assistant installation.
+## Categories
 
-## Verification
+| Category | Automatically applied? | Typical use |
+|---|---|---|
+| Proper name | yes | „Mulahn“ → „Mulan“ |
+| Technical term | yes | rare terms the STT does not know |
+| STT misspelling | yes | default for pairs learned in a conversation |
+| Ambiguous | **no** – stored for reference only | pairs whose misheard word is an everyday word („Bild“ → „Bill“) |
+| Device / room / control / status / confirmation | **never stored** | „Licht“, „Wohnzimmer“, „an“, „aus“, „stopp“, „Ja, mach das“, „Status“ … |
+
+Everyday words are automatically downgraded to *ambiguous*, also for manual entries.
+
+## Safety rules (enforced in code and tests)
+
+1. Home Assistant handles local intents first; the router only sees what HA did not handle.
+2. ASM never calls a Home Assistant service, never switches anything, never changes device
+   names, entity IDs, rooms, exposures, permissions or the Assist pipeline.
+3. Pairs are applied **only** to sentences the router classifies as conversation or
+   knowledge, contain no control/device/room vocabulary before **and** after the
+   replacement, and only as whole words in one pass (no chains).
+4. Commands and status requests are never rewritten; the existing RouterBridge filters
+   (no invented device actions, no unverified Home Assistant claims) stay in place.
+5. Learning only after an explicit „Ja“ in the same conversation, within 60 seconds.
+   Unconfirmed proposals live only in memory and expire.
+6. A conflicting pair (same misheard word, other meaning) is never overwritten silently:
+   Nabu asks „Bisher verstehe ich „X“ als „Y“. Soll ich mir stattdessen „Z“ merken?“; the
+   options refuse it with an explanation. Chains and loops (A→B→C, A↔B) are refused.
+7. ASM works only in mode **Active** and only when the switch is on. Off and Observe are unchanged.
+
+## Home Assistant interface
+
+*Settings → Devices & services → Kinetic Voice Router → Configure → Speech memory*
+
+- Overview: learning on/off, number of entries (limit 200), storage state, every pair with
+  category and „confirmed in conversation on …“ / „added manually on …“.
+- Switch learning on/off (option, default off).
+- Add, edit (meaning and category), delete a term.
+- Reset all terms – only after a confirmation page with „Cancel“.
+
+German and English texts; native Home Assistant forms and menus only.
+
+## Storage
+
+- Home Assistant `Store`, key `kinetic_voice_router.speech_memory` in `.storage`, version 1,
+  written **atomically** and marked **private**; survives restarts and updates.
+- Content: `heard`, `intended`, `category`, `source` (dialogue/manual), `confirmed_on`
+  (date only). No sentences, audio, conversation IDs, tokens or person profiles.
+- Limits: 200 entries, 1–3 words and 40 characters per side, letters only, at least 3
+  letters for the misheard side.
+- Damaged data: syntactically broken JSON is moved aside by Home Assistant (`*.corrupt.<time>`)
+  with a repair issue. Readable but invalid content, or a newer format version, is **left
+  untouched**: the lexicon is locked (no learning, no edits) and the options show a warning
+  until you reset it explicitly. Nothing is reset silently.
+- Removing the integration deletes the stored lexicon.
+- Diagnostics contain only the switch state, storage state and the number of entries.
+
+## Not (yet) possible
+
+- Repairing the audio or the STT result itself; vocabulary hints for a specific STT engine.
+- Learning from a correction when the misheard word was not in your previous sentence.
+- Separate lexicons per person. This needs reliable speaker identification first; until
+  then the lexicon is shared by everyone using the voice assistant.
+- English correction phrases: the router's language engine is German.
+- Strengthening a pair by repetition: one explicit confirmation is the only way to store.
+
+## Testing on a real Home Assistant later
+
+1. Snapshot / backup first, keep the published release at hand for rollback.
+2. Install the development build only after the maintainer's approval; mode **Observe** first.
+3. Mode **Active**, switch learning **on**, run the Mulan example by voice and by Assist text.
+4. Check *Speech memory* in the options, restart Home Assistant, repeat step 4 of the table.
+5. Negative checks: „T.“ after a question, „Ja, mach das“, „Licht an“, a status question,
+   a „Ja“ after 60 seconds, a second conversation.
+6. Switch learning off and confirm that the same sentences behave as before.
+
+## Verification commands
 
 ```bash
-python -I -m unittest discover -s tests/router -p 'test_speech_memory.py'
 python -I -m unittest discover -s tests/router
 python -m pytest tests/ha
 ruff check . && ruff format --check .
 python scripts/audit_public.py
 ```
-
-**Current local preliminary result:** 11 synthetic tests PASS against a small
-classifier stand-in. Full real-repo tests, CI, native HA tests and independent environment verification still required. Do not interpret the preliminary result
-as a working or installable ASM feature.
-
-Owner preference: *understand → inspect → isolate → change → validate*; avoid
-interleaving unrelated live HA / Echo troubleshooting.
