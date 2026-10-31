@@ -84,7 +84,11 @@ class SpeechMemory:
 
     def propose(self, conversation_id: str | None, heard: str, intended: str) -> bool:
         """One short-lived candidate per session; does NOT write a learned rule."""
-        if not isinstance(conversation_id, str) or not conversation_id or len(conversation_id) > 128:
+        if (
+            not isinstance(conversation_id, str)
+            or not conversation_id
+            or len(conversation_id) > 128
+        ):
             return False
         candidate = _rule(heard, intended)
         if candidate is None:
