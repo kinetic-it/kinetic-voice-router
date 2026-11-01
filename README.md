@@ -24,15 +24,15 @@ Home Assistant handle everything it understands locally, and takes care of the r
 
 | | |
 |---|---|
-| Published | `v0.5.0b2` (experimental pre-release, 2026-10-30); `v0.5.0b1` before it |
-| In development | Adaptive Speech Memory (optional, off by default) and short conversational follow-ups — **not released** |
-| Tested against | Home Assistant 2026.9.x **contract stubs** and a local fake companion in CI; the maintainer ran a real Home Assistant conversation test with `v0.5.0b2`. The development features above have **not** been tested on a real system yet. |
+| Published | `v0.5.0b3` (experimental ASM + follow-up beta, 2026-11-01); `v0.5.0b2` remains available for rollback |
+| New in v0.5.0b3 | Adaptive Speech Memory (optional, off by default) and short conversational follow-ups; **not yet tested with live HA/STT** |
+| Tested against | Home Assistant 2026.9.x **contract stubs** and a local fake companion in CI; the maintainer ran a real Home Assistant conversation test with `v0.5.0b2`. The ASM and follow-up features have **not** been tested on a real Home Assistant system yet; independent VM tests passed. |
 | Hermes Companion API | v1 (`/health`, `/v1/capabilities`, `/v1/inference`), bearer token |
 | Licence | MIT, personal **and commercial** use permitted, **without warranty** |
 
 ## Installation
 
-**Experimental beta only.** The published pre-release `v0.5.0b2` may be installed by
+**Experimental beta only.** The published pre-release `v0.5.0b3` may be installed by
 adding `https://github.com/kinetic-it/kinetic-voice-router` as a custom *Integration*
 repository in HACS, then explicitly selecting the beta release. Do not install
 development branches.
@@ -54,7 +54,7 @@ instance, back up Home Assistant and read [docs/MIGRATION.md](docs/MIGRATION.md)
 *Reconfigure* (three-dots menu) changes URL and TLS check; *Configure → Hermes connection*
 shows a live status. Re-authentication starts automatically when the token is rejected.
 
-## Adaptive Speech Memory (optional, in development)
+## Adaptive Speech Memory (optional, experimental beta)
 
 Speech recognition sometimes mishears names ("Mulahn" instead of "Mulan"). With
 *Configure → Speech memory → Learn speech corrections* switched on (default **off**) and
@@ -137,9 +137,9 @@ Home Assistant erledigt zuerst alles, was es lokal versteht. Was übrig bleibt:
 - im Modus *Aktiv* werden Hermes-Antworten geprüft, damit unbelegte Behauptungen
   („habe eingeschaltet“, „Home Assistant ist ausgefallen“) nicht als Tatsache gesprochen werden.
 
-**Status:** Veröffentlicht ist `v0.5.0b2` als experimentelle Vorabversion, ohne Gewähr.
-In Entwicklung (nicht veröffentlicht): Sprachwörterbuch (Adaptive Speech Memory, optional,
-standardmäßig aus) und kurze Folgeantworten im Gespräch.
+**Status:** `v0.5.0b3` ist die experimentelle ASM-/Folgedialog-Beta, ohne Gewähr.
+`v0.5.0b2` bleibt für ein Rollback verfügbar. Sprachwörterbuch ist optional und
+standardmäßig ausgeschaltet; die Funktionen wurden noch nicht im echten HA-/STT-Betrieb geprüft.
 **Installation:** über HACS als benutzerdefiniertes Integrations-Repository (siehe oben). **Einrichtung:** Integration hinzufügen,
 Hermes-URL und Token eingeben, Verbindungstest abwarten, Agent in der Assist-Pipeline wählen,
 Betriebsart unter *Konfigurieren* festlegen (Standard: Aus). Migration von 0.4.x:
