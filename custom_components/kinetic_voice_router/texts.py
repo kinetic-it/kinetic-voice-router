@@ -224,3 +224,96 @@ def statistics_details(lang: str, snap: dict[str, Any]) -> str:
     for key, count in snap["hermes_latency"].items():
         lines.append(f"- {LATENCY_LABELS[lang][key]}: {count}")
     return "\n".join(lines)
+
+
+# --- Adaptive Speech Memory overview -----------------------------------------------------
+
+_CATEGORY_LABELS = {
+    "de": {
+        "name": "Eigenname",
+        "term": "Fachbegriff",
+        "stt": "STT-Fehlschreibung",
+        "ambiguous": "mehrdeutig (nie automatisch)",
+    },
+    "en": {
+        "name": "proper name",
+        "term": "technical term",
+        "stt": "STT misspelling",
+        "ambiguous": "ambiguous (never automatic)",
+    },
+}
+_SOURCE_LABELS = {
+    "de": {
+        "dialogue": "im Gespräch bestätigt am {date}",
+        "manual": "manuell eingetragen am {date}",
+    },
+    "en": {"dialogue": "confirmed in conversation on {date}", "manual": "added manually on {date}"},
+}
+_ASM_TEXT = {
+    "de": {
+        "on": "**Lernen:** an",
+        "off": "**Lernen:** aus (Standard). Gespeicherte Einträge werden nicht verwendet.",
+        "inactive_mode": "Wirkt nur in der Betriebsart **Aktiv**.",
+        "count": "**Einträge:** {count} von {limit}",
+        "ok": "",
+        "invalid": (
+            "**Achtung:** Das gespeicherte Wörterbuch ist ungültig und wurde nicht verändert. "
+            "Lernen und Bearbeiten sind gesperrt, bis du es zurücksetzt."
+        ),
+        "unreadable": (
+            "**Achtung:** Das gespeicherte Wörterbuch konnte nicht gelesen werden (z. B. neuere "
+            "Version). Es bleibt unverändert; Lernen und Bearbeiten sind gesperrt."
+        ),
+        "empty": "Noch keine bestätigten Begriffe.",
+        "more": "… und {count} weitere",
+    },
+    "en": {
+        "on": "**Learning:** on",
+        "off": "**Learning:** off (default). Stored entries are not used.",
+        "inactive_mode": "Only takes effect in mode **Active**.",
+        "count": "**Entries:** {count} of {limit}",
+        "ok": "",
+        "invalid": (
+            "**Warning:** The stored dictionary is invalid and was left unchanged. "
+            "Learning and editing are locked until you reset it."
+        ),
+        "unreadable": (
+            "**Warning:** The stored dictionary could not be read (e.g. a newer version). "
+            "It stays unchanged; learning and editing are locked."
+        ),
+        "empty": "No confirmed terms yet.",
+        "more": "… and {count} more",
+    },
+}
+_OVERVIEW_ROWS = 40
+
+
+def speech_memory_overview(
+    lang: str,
+    *,
+    enabled: bool,
+    mode_active: bool,
+    status: str,
+    entries: list[Any],
+    limit: int,
+) -> str:
+    """Markdown overview of the confirmed pairs; contains no sentences or session data."""
+    texts = _ASM_TEXT[lang]
+    parts = [texts["on"] if enabled else texts["off"]]
+    if enabled and not mode_active:
+        parts.append(texts["inactive_mode"])
+    parts.append(texts["count"].format(count=len(entries), limit=limit))
+    if texts.get(status):
+        parts.append(texts[status])
+    if not entries:
+        parts.append(texts["empty"])
+        return "\n\n".join(parts)
+    lines = []
+    for entry in entries[:_OVERVIEW_ROWS]:
+        category = _CATEGORY_LABELS[lang][entry.category.value]
+        source = _SOURCE_LABELS[lang][entry.source.value].format(date=entry.confirmed_on)
+        lines.append(f"- **{entry.heard}** → **{entry.intended}** · {category} · {source}")
+    if len(entries) > _OVERVIEW_ROWS:
+        lines.append(texts["more"].format(count=len(entries) - _OVERVIEW_ROWS))
+    parts.append("\n".join(lines))
+    return "\n\n".join(parts)

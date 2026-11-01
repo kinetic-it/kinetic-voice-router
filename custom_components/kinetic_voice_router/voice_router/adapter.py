@@ -139,6 +139,7 @@ class RouterBridge:
         conversation_id: str | None,
         call_hermes: Callable[[], Awaitable[str | None]],
         hermes_errors: tuple[type[BaseException], ...],
+        chat_followup: bool = False,
     ) -> BridgeReply | None:
         """Bearbeitet einen Turn. None heisst: Router greift nicht ein.
 
@@ -147,7 +148,9 @@ class RouterBridge:
         Fehler im Hermes-Aufruf werden wie bisher klassifiziert.
         """
         try:
-            route_input = RouteInput(text, language or "", conversation_id)
+            route_input = RouteInput(
+                text, language or "", conversation_id, chat_followup=chat_followup
+            )
             if not should_route(self.config, route_input):
                 return None
             decision = route(route_input, self.store, self.config)

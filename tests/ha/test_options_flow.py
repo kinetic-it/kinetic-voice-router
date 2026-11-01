@@ -84,7 +84,7 @@ async def test_options_open_as_menu_with_real_info(hass: FakeHass) -> None:
     entry = await set_up(hass, {CONF_MODE: "observe"})
     menu = await options_flow(hass, entry).async_step_init()
     assert menu["type"] == "menu"
-    assert menu["menu_options"] == ["settings", "connection", "test", "statistics"]
+    assert menu["menu_options"] == ["settings", "connection", "speech_memory", "test", "statistics"]
     assert menu["description_placeholders"] == {
         "version": INTEGRATION_VERSION,
         "router_version": INTEGRATION_VERSION,
@@ -475,7 +475,7 @@ def test_reset_execute_only_offered_on_confirmation_page() -> None:
     reset_execute steht ausschliesslich im Menue der Bestaetigungsseite."""
     source = (ROOT / "custom_components" / DOMAIN / "config_flow.py").read_text(encoding="utf-8")
     menus = re.findall(r"menu_options=\[([^\]]*)\]", source)
-    offering = [m for m in menus if "reset_execute" in m]
+    offering = [m for m in menus if '"reset_execute"' in m]
     assert offering == ['"reset_execute", "statistics"']
 
 

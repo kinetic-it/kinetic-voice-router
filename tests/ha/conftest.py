@@ -53,6 +53,7 @@ selector = _module("homeassistant.helpers.selector")
 intent = _module("homeassistant.helpers.intent")
 entity_platform = _module("homeassistant.helpers.entity_platform")
 aiohttp_client = _module("homeassistant.helpers.aiohttp_client")
+storage = _module("homeassistant.helpers.storage")
 for _name, _mod in {
     "components": components,
     "config_entries": config_entries,
@@ -68,6 +69,7 @@ for _name, _mod in {
     "intent": intent,
     "entity_platform": entity_platform,
     "aiohttp_client": aiohttp_client,
+    "storage": storage,
 }.items():
     setattr(helpers, _name, _mod)
 
@@ -112,6 +114,80 @@ exceptions.HomeAssistantError = HomeAssistantError
 exceptions.ConfigEntryError = ConfigEntryError
 exceptions.ConfigEntryNotReady = ConfigEntryNotReady
 exceptions.ConfigEntryAuthFailed = ConfigEntryAuthFailed
+
+
+class UnsupportedStorageVersionError(HomeAssistantError):
+    pass
+
+
+exceptions.UnsupportedStorageVersionError = UnsupportedStorageVersionError
+
+
+class Store:
+    """Contract stub of homeassistant.helpers.storage.Store (HA 2026.9.4).
+
+    Files live in `hass.storage_files[key]` as the JSON-able dict HA would write:
+    {"version", "minor_version", "key", "data"}. Like HA: missing file -> None;
+    newer major version -> UnsupportedStorageVersionError; a test can put the
+    marker CORRUPT into the dict to simulate syntactically broken JSON (HA moves the
+    file aside, raises a repair issue and returns None).
+    """
+
+    CORRUPT = object()
+
+    def __class_getitem__(cls, item: Any) -> type:
+        return cls
+
+    def __init__(
+        self, hass, version, key, private=False, *, atomic_writes=False, minor_version=1, **kwargs
+    ):
+        self.hass, self.version, self.key = hass, version, key
+        self.minor_version = minor_version
+        self.private, self.atomic_writes = private, atomic_writes
+
+    async def async_load(self):
+        files = self.hass.storage_files
+        if self.key not in files:
+            return None
+        raw = files[self.key]
+        if raw is Store.CORRUPT:
+            files[f"{self.key}.corrupt"] = raw
+            del files[self.key]
+            self.hass.repair_issues.append(f"storage_corruption_{self.key}")
+            return None
+        if raw["version"] > self.version:
+            raise UnsupportedStorageVersionError(self.key)
+        if raw["version"] == self.version and raw.get("minor_version", 1) == self.minor_version:
+            return __import__("copy").deepcopy(raw["data"])
+        data = await self._async_migrate_func(
+            raw["version"], raw.get("minor_version", 1), raw["data"]
+        )
+        await self.async_save(data)
+        return data
+
+    async def async_save(self, data):
+        import json
+
+        self.hass.storage_writes += 1
+        self.hass.storage_files[self.key] = json.loads(
+            json.dumps(
+                {
+                    "version": self.version,
+                    "minor_version": self.minor_version,
+                    "key": self.key,
+                    "data": data,
+                }
+            )
+        )
+
+    async def async_remove(self):
+        self.hass.storage_files.pop(self.key, None)
+
+    async def _async_migrate_func(self, old_major, old_minor, old_data):
+        raise NotImplementedError
+
+
+storage.Store = Store
 
 
 # --- selectors --------------------------------------------------------------------------
@@ -551,6 +627,9 @@ class FakeHass:
         self.entities: dict[str, list[Any]] = {}
         self.session: ClientSession | None = None
         self.companion: Any = None
+        self.storage_files: dict[str, Any] = {}
+        self.storage_writes = 0
+        self.repair_issues: list[str] = []
 
 
 def async_get_clientsession(hass: Any, verify_ssl: bool = True) -> ClientSession:

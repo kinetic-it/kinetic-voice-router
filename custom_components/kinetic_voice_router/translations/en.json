@@ -67,12 +67,14 @@
         "menu_options": {
           "settings": "Mode",
           "connection": "Hermes connection",
+          "speech_memory": "Speech memory",
           "test": "Test request",
           "statistics": "Runtime statistics"
         },
         "menu_option_descriptions": {
           "settings": "Off, Observe or Active",
           "connection": "Check the connection to the Hermes Companion",
+          "speech_memory": "Learn confirmed word corrections (opt-in)",
           "test": "Simulate the router decision for a sentence",
           "statistics": "Anonymous counters since HA start"
         }
@@ -94,6 +96,81 @@
         "menu_options": {
           "connection": "Test again",
           "init": "Back to overview"
+        }
+      },
+      "speech_memory": {
+        "title": "Speech memory",
+        "description": "{overview}\n\nOnly confirmed pairs are stored (misheard word → meant word), never sentences, audio or conversation IDs. Device, room and control words are never learned or replaced.",
+        "menu_options": {
+          "speech_memory_toggle": "Switch learning on/off",
+          "speech_memory_add": "Add a term",
+          "speech_memory_edit": "Edit a term",
+          "speech_memory_delete": "Delete a term",
+          "speech_memory_reset_confirm": "Reset all terms …",
+          "init": "Back to overview"
+        }
+      },
+      "speech_memory_unavailable": {
+        "title": "Speech memory",
+        "description": "The speech memory is only available while the integration is loaded (Hermes connection established).",
+        "menu_options": {
+          "init": "Back to overview"
+        }
+      },
+      "speech_memory_toggle": {
+        "title": "Learn speech corrections",
+        "description": "When on (and mode is Active), the router asks after a correction such as \"No, I meant Mulan\" whether to remember the pair, stores it only after an explicit \"yes\", and applies confirmed pairs to harmless conversation. Off by default.",
+        "data": {
+          "speech_memory": "Learn and use confirmed corrections"
+        },
+        "submit": "Save"
+      },
+      "speech_memory_add": {
+        "title": "Add a term",
+        "description": "Enter what speech recognition hears and what you mean. 1–3 words each, letters only.",
+        "data": {
+          "heard": "Recognised as",
+          "intended": "Meant",
+          "category": "Category"
+        },
+        "data_description": {
+          "heard": "e.g. Mulahn – at least 3 letters; single letters are not accepted.",
+          "intended": "e.g. Mulan",
+          "category": "Ambiguous terms are stored but never replaced automatically."
+        },
+        "submit": "Add"
+      },
+      "speech_memory_edit": {
+        "title": "Edit a term",
+        "description": "Choose the term to change.",
+        "data": {
+          "entry": "Term"
+        },
+        "submit": "Next"
+      },
+      "speech_memory_edit_entry": {
+        "title": "Edit term",
+        "description": "Recognised as **{heard}**. Change the meaning or the category.",
+        "data": {
+          "intended": "Meant",
+          "category": "Category"
+        },
+        "submit": "Save"
+      },
+      "speech_memory_delete": {
+        "title": "Delete a term",
+        "description": "The selected term is deleted immediately.",
+        "data": {
+          "entry": "Term"
+        },
+        "submit": "Delete"
+      },
+      "speech_memory_reset_confirm": {
+        "title": "Reset speech memory?",
+        "description": "All learned and manually added terms are deleted. This also repairs a dictionary that could not be read. This cannot be undone.",
+        "menu_options": {
+          "speech_memory_reset_execute": "Delete all terms",
+          "speech_memory": "Cancel"
         }
       },
       "test": {
@@ -143,7 +220,16 @@
     },
     "error": {
       "invalid_mode": "Unknown mode. Choose Off, Observe or Active.",
-      "empty_test_sentence": "Please enter a test sentence."
+      "empty_test_sentence": "Please enter a test sentence.",
+      "asm_invalid": "Use 1–3 words with letters only (max. 40 characters).",
+      "asm_too_short": "Too short: at least 3 letters are needed (single letters such as \"T\" are not accepted).",
+      "asm_same": "Recognised and meant are the same.",
+      "asm_protected": "Device, room, control and confirmation words cannot be learned.",
+      "asm_conflict": "This term already has another meaning. Edit the existing entry instead.",
+      "asm_chain": "This would create a chain or loop with an existing entry.",
+      "asm_full": "The speech memory is full. Delete entries first.",
+      "asm_unknown_entry": "This entry no longer exists.",
+      "asm_read_only": "The stored dictionary is locked because it could not be read. Reset it first."
     }
   },
   "selector": {
@@ -152,6 +238,14 @@
         "off": "Off – Hermes works as without the router",
         "observe": "Observe – count only, answers unchanged",
         "active": "Active – short router answer for device and status requests"
+      }
+    },
+    "category": {
+      "options": {
+        "name": "Proper name",
+        "term": "Technical term",
+        "stt": "Speech-to-text misspelling",
+        "ambiguous": "Ambiguous (never automatic)"
       }
     }
   }

@@ -1,0 +1,109 @@
+name: Publish owner-approved v0.5.0b3 ASM beta (one time)
+
+# Owner approved merge + experimental beta publication after independent testing.
+# Only release exactly the reviewed ASM tree, version v0.5.0b3.
+# A published release is never overwritten. No production Home Assistant changes.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-kvr-beta-0-5-0b3
+  cancel-in-progress: false
+
+jobs:
+  approved-beta:
+    name: Validate and publish owner-approved 0.5.0b3
+    if: github.repository == 'kinetic-it/kinetic-voice-router'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Require reviewed source bytes and exact version
+        shell: bash
+        run: |
+          set -euo pipefail
+          REVIEWED_SHA=dc509b294186aac6bfda9028ce9089d9aba6cd87
+          git cat-file -e "${REVIEWED_SHA}^{commit}"
+          git diff --quiet "${REVIEWED_SHA}" HEAD --             custom_components/kinetic_voice_router             README.md CHANGELOG.md docs/ADAPTIVE-SPEECH-MEMORY.md             requirements-test.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          m = json.loads(Path("custom_components/kinetic_voice_router/manifest.json").read_text())
+          assert m["version"] == "0.5.0b3", m["version"]
+          assert m["domain"] == "kinetic_voice_router"
+          assert Path("hacs.json").is_file()
+          PY
+      - name: Install pinned test dependencies
+        run: python -m pip install --quiet --require-hashes --only-binary ":all:" -r requirements-test.txt
+      - name: Repeat full router, integration, lint and public-source audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -m unittest discover -s tests/router
+          python -m pytest -q tests/ha
+          ruff check .
+          ruff format --check .
+          python scripts/audit_public.py
+      - name: Build release archive
+        shell: bash
+        run: |
+          cd custom_components/kinetic_voice_router
+          zip -q -r -X "$GITHUB_WORKSPACE/kinetic_voice_router.zip" .             -x '*/__pycache__/*' -x '__pycache__/*'
+      - name: Publish one experimental beta, never overwrite
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v0.5.0b3 >/dev/null 2>&1; then
+            echo "BETA_RELEASE=ALREADY_PUBLISHED"
+            exit 0
+          fi
+          cat > /tmp/release-notes.md <<'NOTES'
+          **Experimental beta v0.5.0b3 — not production-ready. No warranty.**
+          
+          This release adds optional **Adaptive Speech Memory (ASM)** and short,
+          session-bound conversational follow-ups. Requires Home Assistant and
+          a configured Hermes Companion API v1.
+          
+          - Disabled by default. In **Active** mode, a user can confirm a harmless
+            spoken-word correction, review/delete terms under Configure → Speech memory,
+            and use the saved local word mapping in later harmless conversations.
+          - One-turn follow-ups such as "Tee" after "Kaffee oder Tee?" retain bounded
+            conversational context. "T." is never guessed; Nabu asks to repeat.
+          - Confirmed mappings are stored locally in Home Assistant using a private,
+            versioned Store. No raw audio or full conversations are retained.
+          - Home Assistant handles local intents first. The router does not execute
+            device actions, change permissions, expose entities or modify pipelines.
+          
+          **Verification:** Independently checked at source commit 4129da9
+          (179 router/static and 203 integration tests, Ruff and public audit).
+          Version-only release changes are rechecked by the automated workflow.
+          HACS, hassfest and CI passed on the development PR.
+          
+          **Not yet validated:** Real Home Assistant runtime, STT and Echo behavior
+          with this beta. Use only for controlled tests, not for safety-critical
+          or unattended device operation.
+          
+          **Rollback:** Retain a Home Assistant backup/snapshot and the prior
+          v0.5.0b2 release. Install manually using the supported HACS beta
+          mechanism only after a separate user-approved live test plan.
+          
+          Documentation: https://github.com/kinetic-it/kinetic-voice-router/blob/main/docs/ADAPTIVE-SPEECH-MEMORY.md
+          NOTES
+          gh release create "v0.5.0b3" kinetic_voice_router.zip             --target "$GITHUB_SHA"             --prerelease             --title "Kinetic Voice Router v0.5.0b3 (ASM experimental beta)"             --notes-file /tmp/release-notes.md
+          gh release view v0.5.0b3 --json isDraft,isPrerelease,url,tagName
+          echo "BETA_RELEASE=PASS"

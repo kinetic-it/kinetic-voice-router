@@ -58,6 +58,7 @@ async def test_diagnostics_contains_only_facts_and_counters(
             "api_version": "1.0",
             "companion_version": "9.9.9",
         },
+        "speech_memory": {"learning_enabled": False, "storage_status": "ok", "entries": 0},
     }
     assert stats["scope"] == "process_lifetime"
     assert stats["decisions"]["active"]["CONTROL_FALLBACK"] == 1
