@@ -6,6 +6,10 @@ pre-releases and **not** a recommendation for production use.
 
 ## [Unreleased]
 
+## [0.5.0b3] - 2026-11-01
+
+Experimental beta release candidate. Includes ASM and safe short conversational follow-ups; independently tested on a separate development VM (179 router/static + 203 integration tests, Ruff, public audit). GitHub CI passed. Real Home Assistant / STT validation is not yet completed; use with backup and rollback, not for safety-critical control.
+
 ### Added
 - **Adaptive Speech Memory** (optional, off by default, mode Active only): after a
   correction such as „Nein, ich meinte Mulan“ the original request is answered with the
