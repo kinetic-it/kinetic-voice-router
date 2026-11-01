@@ -1,6 +1,6 @@
 # Adaptive Speech Memory (ASM)
 
-Status: **implemented on the development branch, not released.** Off by default. Tested
+Status: **included in experimental beta v0.5.0b3**. Off by default. Tested
 with Home Assistant contract stubs and a local fake Hermes Companion; **not yet tested on a
 real Home Assistant with real speech recognition.** All examples are synthetic.
 
