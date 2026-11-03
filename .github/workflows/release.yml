@@ -1,22 +1,22 @@
-name: Release (draft only)
+name: Release (attach tested archive)
 
-# A pushed tag `vX.Y.Z[bN]` builds the integration archive and creates a DRAFT, pre-release
-# GitHub release. Nothing becomes installable for users until a maintainer reviews the draft
-# and presses "Publish release" by hand. No tag exists yet.
+# GitHub draft is created by the maintainer. Publishing it creates the version tag
+# and triggers this workflow, which validates the tagged source and attaches the ZIP.
+# The workflow never creates a second release and never deploys to Home Assistant.
 
 on:
-  push:
-    tags: ["v*"]
+  release:
+    types: [published]
 
 permissions:
   contents: read
 
 jobs:
-  draft:
+  package:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
-      contents: write  # create the draft release
+      contents: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -24,6 +24,10 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
+      - name: Only experimental pre-releases
+        env:
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: test "$IS_PRERELEASE" = "true"
       - name: Tag must equal the manifest version
         run: |
           version=$(python -c "import json;print(json.load(open('custom_components/kinetic_voice_router/manifest.json'))['version'])")
@@ -39,11 +43,7 @@ jobs:
         run: |
           cd custom_components/kinetic_voice_router
           zip -r -X "${GITHUB_WORKSPACE}/kinetic_voice_router.zip" . -x '*/__pycache__/*' -x '__pycache__/*'
-      - name: Create draft pre-release
+      - name: Attach ZIP to published release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "${GITHUB_REF_NAME}" kinetic_voice_router.zip \
-            --draft --prerelease --verify-tag \
-            --title "Kinetic Voice Router ${GITHUB_REF_NAME} (experimental, no warranty)" \
-            --notes "Experimental pre-release. No warranty. See CHANGELOG.md and docs/MIGRATION.md."
+        run: gh release upload "${GITHUB_REF_NAME}" kinetic_voice_router.zip --clobber
