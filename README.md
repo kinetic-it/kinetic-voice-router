@@ -26,7 +26,7 @@ Home Assistant handle everything it understands locally, and takes care of the r
 |---|---|
 | Beta version in source | `v0.5.0b4` (ASM confirmation fix); published versions are listed under GitHub Releases, with `v0.5.0b3` available for rollback |
 | New in v0.5.0b4 | Fix for ASM yes/no learning confirmations with strict chat-context validation and unchanged 60-second window |
-| Tested against | Home Assistant 2026.9.x **contract stubs** and a local fake companion. The b4 fix passed independent VM205 workshop tests (181 router, 216 integration). **The b4 confirmation fix is not yet verified on a real Home Assistant system.** |
+| Tested against | Home Assistant 2026.9.x **contract stubs** and a local fake companion. The b4 fix passed tests on a separate development VM (181 router, 216 integration). **The b4 confirmation fix is not yet verified on a real Home Assistant system.** |
 | Hermes Companion API | v1 (`/health`, `/v1/capabilities`, `/v1/inference`), bearer token |
 | Licence | MIT, personal **and commercial** use permitted, **without warranty** |
 
