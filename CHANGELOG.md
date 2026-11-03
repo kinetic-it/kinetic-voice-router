@@ -6,6 +6,10 @@ pre-releases and **not** a recommendation for production use.
 
 ## [Unreleased]
 
+## [0.5.0b4] - 2026-11-03
+
+Experimental beta maintenance release. Independent workshop validation on VM205 passed (181 router, 216 HA integration tests; focused ASM regressions, lint and public audit). The fix has not yet been validated on a real Home Assistant system. No device-control permissions or service calls are added. `v0.5.0b3` remains the previous beta for rollback.
+
 ### Fixed
 - **ASM learning confirmation:** the open learning question was consumed *before* the
   ChatLog context was checked, so a „Ja“ in a wrong or incomplete context destroyed it
