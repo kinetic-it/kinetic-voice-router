@@ -50,6 +50,7 @@ from .voice_router.speech_memory import (
 from .voice_router.speech_memory import (
     Source as MemorySource,
 )
+from .voice_router.state import ProposalStatus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -122,13 +123,12 @@ class KineticVoiceRouterConversationEntity(conversation.ConversationEntity):
         session_id = getattr(chat_log, "conversation_id", None) or user_input.conversation_id
         speech = runtime.speech if bridge.enabled and runtime.speech_enabled else None
 
-        # 1. Answer to an open learning proposal ("Soll ich mir merken ...?").
+        # 1. Answer to an open learning proposal ("Soll ich mir merken ...?"). The proposal
+        #    is consumed only once the ChatLog context is valid and the answer is explicit.
         if speech is not None:
-            proposal = bridge.store.pop_proposal(session_id)
-            if proposal is not None and _previous_assistant_text(chat_log, user_input.agent_id):
-                reply_text = await self._answer_proposal(proposal, user_input.text)
-                if reply_text is not None:
-                    return self._answer(user_input, chat_log, reply_text, arm_followup=False)
+            reply_text = await self._answer_proposal(user_input, chat_log, session_id)
+            if reply_text is not None:
+                return self._answer(user_input, chat_log, reply_text, arm_followup=False)
 
         # Consume a bounded question token only if HA really supplied the prior
         # assistant turn in the same ChatLog. The token stores no spoken text.
@@ -237,14 +237,52 @@ class KineticVoiceRouterConversationEntity(conversation.ConversationEntity):
             heard=existing.heard, old=existing.intended, intended=intended
         )
 
-    async def _answer_proposal(self, proposal: tuple[str, str], text: str) -> str | None:
-        """Explicit yes stores the pair, explicit no drops it, anything else: normal turn."""
-        speech = self._runtime.speech
-        heard, intended = proposal
-        if is_decline(text):
-            return responses.ASM_NOT_LEARNED
-        if not is_confirmation(text) or speech is None:
+    async def _answer_proposal(
+        self,
+        user_input: conversation.ConversationInput,
+        chat_log: conversation.ChatLog,
+        session_id: str | None,
+    ) -> str | None:
+        """Reply to the learning question, or None for a normal turn.
+
+        1. No open proposal / expired: normal turn (an expired one is gone for good).
+        2. The ChatLog must show THIS agent's learning question right before the answer;
+           otherwise the proposal is left untouched (it simply expires) and nothing is stored.
+        3. In a valid context only an explicit yes or no answers it. Any other reply lets
+           the proposal lapse (nothing stored) and is handled as an ordinary turn.
+        """
+        store = self._runtime.bridge.store
+        status, proposal = store.peek_proposal(session_id)
+        if proposal is None:
+            if status is ProposalStatus.EXPIRED:
+                _LOGGER.debug("ASM learning question: asm_confirmation=expired")
             return None
+        if not _proposal_context_valid(chat_log, user_input.agent_id, proposal):
+            _LOGGER.debug("ASM learning question: asm_confirmation=context_invalid")
+            return None
+        text = user_input.text
+        if is_decline(text):
+            store.drop_proposal(session_id)
+            _LOGGER.debug("ASM learning question: asm_confirmation=declined")
+            return responses.ASM_NOT_LEARNED
+        if not is_confirmation(text):
+            store.drop_proposal(session_id)
+            _LOGGER.debug("ASM learning question: asm_confirmation=unconfirmed")
+            return None
+        store.drop_proposal(session_id)
+        reply = await self._learn(proposal)
+        _LOGGER.debug(
+            "ASM learning question: asm_confirmation=%s",
+            "stored" if reply != responses.ASM_CANNOT_LEARN else "not_stored",
+        )
+        return reply
+
+    async def _learn(self, proposal: tuple[str, str]) -> str:
+        """Store the confirmed pair. Never touches Home Assistant."""
+        speech = self._runtime.speech
+        if speech is None:
+            return responses.ASM_CANNOT_LEARN
+        heard, intended = proposal
         result = await speech.async_add(
             heard,
             intended,
@@ -315,6 +353,20 @@ def _previous_assistant_text(chat_log: Any, agent_id: str) -> str | None:
         return None
     text = getattr(previous, "content", None)
     return text if isinstance(text, str) else None
+
+
+def _proposal_context_valid(chat_log: Any, agent_id: str, proposal: tuple[str, str]) -> bool:
+    """The turn right before the answer is this agent's own learning question.
+
+    HA supplies the ChatLog; the router stores no spoken text. Both words of the pair must
+    appear quoted in that assistant turn, so an unrelated earlier turn, another agent's
+    turn or a missing history can never be taken as the context of a "Ja".
+    """
+    previous = _previous_assistant_text(chat_log, agent_id)
+    if not previous:
+        return False
+    folded = previous.casefold()
+    return all(f"„{word.casefold()}“" in folded for word in proposal)
 
 
 def _previous_user_text(chat_log: Any) -> str | None:

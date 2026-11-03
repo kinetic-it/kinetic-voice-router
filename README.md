@@ -24,15 +24,15 @@ Home Assistant handle everything it understands locally, and takes care of the r
 
 | | |
 |---|---|
-| Published | `v0.5.0b3` (experimental ASM + follow-up beta, 2026-11-01); `v0.5.0b2` remains available for rollback |
-| New in v0.5.0b3 | Adaptive Speech Memory (optional, off by default) and short conversational follow-ups; **not yet tested with live HA/STT** |
-| Tested against | Home Assistant 2026.9.x **contract stubs** and a local fake companion in CI; the maintainer ran a real Home Assistant conversation test with `v0.5.0b2`. The ASM and follow-up features have **not** been tested on a real Home Assistant system yet; independent VM tests passed. |
+| Beta version in source | `v0.5.0b4` (ASM confirmation fix); published versions are listed under GitHub Releases, with `v0.5.0b3` available for rollback |
+| New in v0.5.0b4 | Fix for ASM yes/no learning confirmations with strict chat-context validation and unchanged 60-second window |
+| Tested against | Home Assistant 2026.9.x **contract stubs** and a local fake companion. The b4 fix passed tests on a separate development VM (181 router, 216 integration). **The b4 confirmation fix is not yet verified on a real Home Assistant system.** |
 | Hermes Companion API | v1 (`/health`, `/v1/capabilities`, `/v1/inference`), bearer token |
 | Licence | MIT, personal **and commercial** use permitted, **without warranty** |
 
 ## Installation
 
-**Experimental beta only.** The published pre-release `v0.5.0b3` may be installed by
+**Experimental beta only.** Published pre-releases may be installed by
 adding `https://github.com/kinetic-it/kinetic-voice-router` as a custom *Integration*
 repository in HACS, then explicitly selecting the beta release. Do not install
 development branches.
@@ -137,9 +137,10 @@ Home Assistant erledigt zuerst alles, was es lokal versteht. Was übrig bleibt:
 - im Modus *Aktiv* werden Hermes-Antworten geprüft, damit unbelegte Behauptungen
   („habe eingeschaltet“, „Home Assistant ist ausgefallen“) nicht als Tatsache gesprochen werden.
 
-**Status:** `v0.5.0b3` ist die experimentelle ASM-/Folgedialog-Beta, ohne Gewähr.
-`v0.5.0b2` bleibt für ein Rollback verfügbar. Sprachwörterbuch ist optional und
-standardmäßig ausgeschaltet; die Funktionen wurden noch nicht im echten HA-/STT-Betrieb geprüft.
+**Status:** `v0.5.0b4` ist der Quellstand mit dem Fix der ASM-Lernbestätigung.
+Welche Beta tatsächlich veröffentlicht ist, zeigt GitHub Releases; `v0.5.0b3` bleibt
+als vorherige Beta zum Rollback verfügbar. Das Sprachwörterbuch ist optional und
+standardmäßig ausgeschaltet. Der b4-Fix ist noch nicht auf echtem Home Assistant validiert.
 **Installation:** über HACS als benutzerdefiniertes Integrations-Repository (siehe oben). **Einrichtung:** Integration hinzufügen,
 Hermes-URL und Token eingeben, Verbindungstest abwarten, Agent in der Assist-Pipeline wählen,
 Betriebsart unter *Konfigurieren* festlegen (Standard: Aus). Migration von 0.4.x:

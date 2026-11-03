@@ -17,6 +17,15 @@ later harmless conversation.
 | 3 | You: „Ja“ → stored, „Gemerkt: Mit „Mulahn“ meinst du „Mulan“.“ You: „Nein“ → nothing stored. Anything else, another conversation or more than 60 seconds → the question lapses, nothing stored. |
 | 4 | Later: „Erzähl mir etwas über Mulahn“ reaches Hermes as „… Mulan“, without asking. |
 
+**What counts as an answer.** The question is bound to its conversation and to the turn
+right before your answer: Home Assistant's chat log must show this agent's own learning
+question (with both quoted words). Only a plain „Ja“ / „Ja, bitte“ / „Ja, gerne“ / „Genau“ /
+„Richtig“ / „Merk dir das“ stores, only a plain „Nein“ (and similar) declines. Anything else
+(„Ja, mach das“, „Vielleicht“, a command, another topic) stores nothing, lets the question
+lapse and is handled as an ordinary turn. A „Ja“ in a wrong or incomplete context stores
+nothing and does not use up the question. The 60-second window starts when the question is
+generated, not when it has been spoken. For a debug log line per outcome see CHANGELOG.
+
 Recognised correction forms: „(Nein,) ich meinte X“, „ich meine X“, „gemeint war/ist X“,
 „ich sagte X“, „ich habe X gesagt“, „nicht Y, sondern X“, „X, nicht Y“ (X and Y: 1–3 words).
 

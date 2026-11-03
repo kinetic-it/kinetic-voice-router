@@ -18,6 +18,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import StrEnum
 
 from .model import HA_ONLY_CODES, ClarificationKind, FailureCode, FailureSource, FailureSummary
 
@@ -26,6 +27,14 @@ DEFAULT_TTL_SECONDS = 120.0
 DIALOGUE_TTL_SECONDS = 60.0
 CHAT_FOLLOWUP_TTL_SECONDS = DIALOGUE_TTL_SECONDS
 MAX_SESSIONS = 64
+
+
+class ProposalStatus(StrEnum):
+    """What an open learning proposal looks like right now (stable log codes)."""
+
+    NONE = "none"
+    OPEN = "open"
+    EXPIRED = "expired"
 
 
 @dataclass
@@ -128,17 +137,37 @@ class SessionStore:
         entry.clarification = None
         return True
 
-    def pop_proposal(self, conversation_id: str | None) -> tuple[str, str] | None:
-        """Consume the proposal once; an expired proposal is gone for good."""
+    def _proposal_fresh(self, entry: _Entry) -> bool:
+        return 0 <= self._clock() - entry.proposal_at <= min(self._ttl, DIALOGUE_TTL_SECONDS)
+
+    def peek_proposal(
+        self, conversation_id: str | None
+    ) -> tuple[ProposalStatus, tuple[str, str] | None]:
+        """Look at the open proposal WITHOUT consuming it.
+
+        An expired proposal is discarded here (it never revives); a fresh one stays until
+        the caller has validated the conversation context and calls `drop_proposal`.
+        """
         if not _valid_id(conversation_id):
-            return None
+            return ProposalStatus.NONE, None
         entry = self._entries.get(conversation_id)
         if entry is None or entry.proposal is None:
-            return None
-        proposal = entry.proposal
-        entry.proposal = None
-        fresh = 0 <= self._clock() - entry.proposal_at <= min(self._ttl, DIALOGUE_TTL_SECONDS)
-        return proposal if fresh else None
+            return ProposalStatus.NONE, None
+        if not self._proposal_fresh(entry):
+            entry.proposal = None
+            return ProposalStatus.EXPIRED, None
+        return ProposalStatus.OPEN, entry.proposal
+
+    def drop_proposal(self, conversation_id: str | None) -> None:
+        """Consume the open proposal of this conversation (single use)."""
+        if _valid_id(conversation_id) and conversation_id in self._entries:
+            self._entries[conversation_id].proposal = None
+
+    def pop_proposal(self, conversation_id: str | None) -> tuple[str, str] | None:
+        """Consume the proposal once; an expired proposal is gone for good."""
+        status, proposal = self.peek_proposal(conversation_id)
+        self.drop_proposal(conversation_id)
+        return proposal if status is ProposalStatus.OPEN else None
 
     def has_proposal(self, conversation_id: str | None) -> bool:
         if not _valid_id(conversation_id):

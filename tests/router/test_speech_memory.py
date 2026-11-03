@@ -32,7 +32,7 @@ from voice_router.speech_memory import (  # noqa: E402
     parse_correction,
     suggested_category,
 )
-from voice_router.state import DIALOGUE_TTL_SECONDS, SessionStore  # noqa: E402
+from voice_router.state import DIALOGUE_TTL_SECONDS, ProposalStatus, SessionStore  # noqa: E402
 
 TODAY = "2026-10-31"
 PREVIOUS = "Erzähl mir etwas über Mulahn"
@@ -360,6 +360,26 @@ class SharedSessionState(unittest.TestCase):
         self.assertIsNone(self.store.pop_proposal("b"))
         self.assertEqual(self.store.pop_proposal("a"), ("Mulahn", "Mulan"))
         self.assertIsNone(self.store.pop_proposal("a"))
+
+    def test_peek_does_not_consume_and_drop_does_(self):
+        self.store.set_proposal("a", "Mulahn", "Mulan")
+        for _ in range(3):
+            self.assertEqual(
+                self.store.peek_proposal("a"), (ProposalStatus.OPEN, ("Mulahn", "Mulan"))
+            )
+        self.assertEqual(self.store.peek_proposal("b"), (ProposalStatus.NONE, None))
+        self.store.drop_proposal("b")  # another session: untouched
+        self.assertTrue(self.store.has_proposal("a"))
+        self.store.drop_proposal("a")
+        self.assertEqual(self.store.peek_proposal("a"), (ProposalStatus.NONE, None))
+
+    def test_peek_reports_expiry_once_and_never_revives(self):
+        self.store.set_proposal("a", "Mulahn", "Mulan")
+        self.clock.now += DIALOGUE_TTL_SECONDS - 1
+        self.assertEqual(self.store.peek_proposal("a")[0], ProposalStatus.OPEN)
+        self.clock.now += 2
+        self.assertEqual(self.store.peek_proposal("a"), (ProposalStatus.EXPIRED, None))
+        self.assertEqual(self.store.peek_proposal("a"), (ProposalStatus.NONE, None))
 
     def test_proposal_expires(self):
         self.store.set_proposal("a", "Mulahn", "Mulan")

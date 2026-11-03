@@ -6,6 +6,22 @@ pre-releases and **not** a recommendation for production use.
 
 ## [Unreleased]
 
+## [0.5.0b4] - 2026-11-03
+
+Experimental beta maintenance release. Independent validation on a separate development VM passed (181 router, 216 HA integration tests; focused ASM regressions, lint and public audit). The fix has not yet been validated on a real Home Assistant system. No device-control permissions or service calls are added. `v0.5.0b3` remains the previous beta for rollback.
+
+### Fixed
+- **ASM learning confirmation:** the open learning question was consumed *before* the
+  ChatLog context was checked, so a „Ja“ in a wrong or incomplete context destroyed it
+  (reported with v0.5.0b3: „Ja“ → „Das habe ich nicht verstanden.“, lexicon stayed empty).
+  The proposal is now only read first and consumed once the turn right before the answer
+  is this agent's own learning question (both quoted words must appear in it) **and** the
+  answer is an explicit yes or no. Any other reply lets it lapse, an invalid context leaves
+  it untouched until it expires. The 60-second window is unchanged. Nothing about the
+  spoken text is stored or logged; the outcome is logged as a code only
+  (`asm_confirmation=stored|declined|unconfirmed|expired|context_invalid|not_stored`,
+  debug level).
+
 ## [0.5.0b3] - 2026-11-01
 
 Experimental beta pre-release published with Owner approval. Includes ASM and safe short conversational follow-ups; independently tested on a separate development VM (179 router/static + 203 integration tests, Ruff, public audit). GitHub CI passed. Real Home Assistant / STT validation is not yet completed; use with backup and rollback, not for safety-critical control.
