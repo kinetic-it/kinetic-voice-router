@@ -19,6 +19,7 @@ from custom_components.kinetic_voice_router.config_flow import (
     KineticVoiceRouterOptionsFlow,
 )
 from custom_components.kinetic_voice_router.const import (
+    CONF_ALARM_ACTIONS,
     CONF_MODE,
     CONF_TEST_SENTENCE,
     CONF_TOKEN,
@@ -170,7 +171,9 @@ async def test_settings_default_is_stored_mode(hass: FakeHass) -> None:
     assert form["step_id"] == "settings"
     assert form["description_placeholders"] == {"mode": "Aktiv"}
     assert schema_default(form, CONF_MODE) == "active"
-    assert [str(key) for key in form["data_schema"].schema] == [CONF_MODE]
+    # G5: der Weckerpfad braucht eine ausdrueckliche Zustimmung; Standard bleibt aus.
+    assert [str(key) for key in form["data_schema"].schema] == [CONF_MODE, CONF_ALARM_ACTIONS]
+    assert schema_default(form, CONF_ALARM_ACTIONS) is False
 
 
 @pytest.mark.parametrize("mode", ["off", "observe", "active"])

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.5.0b6]
+
+- Optionsflow: `alarm_actions` als ausdrueckliche Zustimmung zum autorisierten Weckerpfad (Standard aus).
+- `RouterBridge.from_options` wertet die Optionen jetzt ueber `RouterConfig.from_mapping` aus; zuvor blieb der Weckerpfad in Produktion dauerhaft inaktiv.
+- Ohne `alarm_actions` unveraendertes Verhalten; Fail-closed bleibt erhalten.
+
 ## [0.5.0b5]
 
 - Optionaler, ausdruecklich autorisierter Ausfuehrungspfad fuer Weckerbefehle:

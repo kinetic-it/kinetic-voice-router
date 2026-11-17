@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-ROUTER_VERSION = "0.5.0b5"
+ROUTER_VERSION = "0.5.0b6"
 
 
 class Lane(StrEnum):

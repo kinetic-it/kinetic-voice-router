@@ -112,7 +112,7 @@ class RouterBridge:
         cls, options: Mapping[str, object] | None, *, stats: RuntimeStats | None = None
     ) -> RouterBridge:
         mode = operating_mode(options)
-        config = RouterConfig(router_enabled=mode is OperatingMode.ACTIVE)
+        config = RouterConfig.from_mapping(options)
         return cls(config, mode=mode, stats=stats)
 
     @property

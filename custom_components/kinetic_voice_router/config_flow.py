@@ -36,6 +36,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from . import runtime_stats
 from .const import (
+    CONF_ALARM_ACTIONS,
     CONF_CATEGORY,
     CONF_ENTRY,
     CONF_HEARD,
@@ -326,6 +327,19 @@ class KineticVoiceRouterOptionsFlow(OptionsFlow):
                 data: dict[str, Any] = {CONF_MODE: mode}
                 if CONF_SPEECH_MEMORY in self.config_entry.options:
                     data[CONF_SPEECH_MEMORY] = self.config_entry.options[CONF_SPEECH_MEMORY]
+                # Zustimmung zum autorisierten Weckerpfad: ohne dieses Flag bleibt er aus.
+                # Nur schreiben, wenn es gesetzt ist oder schon gespeichert war, damit
+                # bestehende Optionssätze unverändert bleiben.
+                if (
+                    CONF_ALARM_ACTIONS in user_input
+                    or CONF_ALARM_ACTIONS in self.config_entry.options
+                ):
+                    data[CONF_ALARM_ACTIONS] = bool(
+                        user_input.get(
+                            CONF_ALARM_ACTIONS,
+                            self.config_entry.options.get(CONF_ALARM_ACTIONS, False),
+                        )
+                    )
                 return self.async_create_entry(title="", data=data)
             errors["base"] = "invalid_mode"
         return self.async_show_form(
@@ -338,7 +352,11 @@ class KineticVoiceRouterOptionsFlow(OptionsFlow):
                             translation_key="mode",
                             mode=selector.SelectSelectorMode.LIST,
                         )
-                    )
+                    ),
+                    vol.Optional(
+                        CONF_ALARM_ACTIONS,
+                        default=bool(self.config_entry.options.get(CONF_ALARM_ACTIONS, False)),
+                    ): selector.BooleanSelector(),
                 }
             ),
             errors=errors,

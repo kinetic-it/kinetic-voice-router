@@ -7,7 +7,7 @@ from typing import Final
 DOMAIN: Final = "kinetic_voice_router"
 NAME: Final = "Kinetic Voice Router"
 # Must match manifest.json "version" (checked by tests).
-INTEGRATION_VERSION: Final = "0.5.0b5"
+INTEGRATION_VERSION: Final = "0.5.0b6"
 
 # Hermes Agent Companion connection (config entry data; the token is a secret).
 CONF_URL: Final = "url"
@@ -35,6 +35,7 @@ CONF_ROUTER_ENABLED: Final = "router_enabled"  # 0.3.0 option, migrated to `mode
 
 # Adaptive Speech Memory: learning switch (option, default off) and form fields.
 CONF_SPEECH_MEMORY: Final = "speech_memory"
+CONF_ALARM_ACTIONS: Final = "alarm_actions"
 DEFAULT_SPEECH_MEMORY: Final = False
 CONF_HEARD: Final = "heard"
 CONF_INTENDED: Final = "intended"
