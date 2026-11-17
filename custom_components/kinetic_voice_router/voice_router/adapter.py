@@ -185,9 +185,7 @@ class RouterBridge:
                         conversation_id, FailureCode.ACTION_LIKE_UNHANDLED, FailureSource.ROUTER
                     )
                 return BridgeReply(responses.NOT_EXECUTED, False, False, decision)
-            return BridgeReply(
-                decision.response or responses.NOT_EXECUTED, False, False, decision
-            )
+            return BridgeReply(decision.response or responses.NOT_EXECUTED, False, False, decision)
 
         if not decision.may_call_hermes:
             return BridgeReply(

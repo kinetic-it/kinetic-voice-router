@@ -39,6 +39,7 @@ from .hermes_client import HermesError
 from .runtime import RouterRuntime
 from .status import code_for_error
 from .voice_router import responses
+from .voice_router.authorization import ensure_authorized_target
 from .voice_router.classify import is_device_term, normalize
 from .voice_router.model import Lane, ReasonCode
 from .voice_router.speech_memory import (
@@ -52,8 +53,6 @@ from .voice_router.speech_memory import (
 from .voice_router.speech_memory import (
     Source as MemorySource,
 )
-from .voice_router.authorization import ensure_authorized_target
-from .voice_router.alarm import AUTHORIZED_TARGETS
 from .voice_router.state import ProposalStatus
 
 _LOGGER = logging.getLogger(__name__)
@@ -165,9 +164,7 @@ class KineticVoiceRouterConversationEntity(conversation.ConversationEntity):
             domain, service = ensure_authorized_target(action)
             if not self.hass.services.has_service(domain, service):
                 raise LookupError("service not available")
-            await self.hass.services.async_call(
-                domain, service, dict(action.data), blocking=True
-            )
+            await self.hass.services.async_call(domain, service, dict(action.data), blocking=True)
 
         if bridge.enabled:
             reply = await bridge.async_handle(

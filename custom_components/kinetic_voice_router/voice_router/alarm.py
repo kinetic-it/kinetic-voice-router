@@ -26,8 +26,19 @@ MAX_DELAY_SECONDS = 24 * 3600
 
 _NOUNS = frozenset({"wecker", "timer"})
 _SET_VERBS = frozenset(
-    {"stelle", "stell", "stellen", "setze", "setz", "setzen", "starte", "start",
-     "starten", "erstelle", "erstell"}
+    {
+        "stelle",
+        "stell",
+        "stellen",
+        "setze",
+        "setz",
+        "setzen",
+        "starte",
+        "start",
+        "starten",
+        "erstelle",
+        "erstell",
+    }
 )
 _DELETE_VERBS = frozenset({"lösche", "lösch", "losche", "entferne", "entfern", "abbrechen"})
 _STOP_VERBS = frozenset({"stoppe", "stopp", "stoppen", "beende", "beend", "aus", "ausmachen"})
@@ -52,12 +63,28 @@ _HEUTE = re.compile(r"\bheute\b")
 _MEHRFACH = re.compile(r"\b(?:und|dann|danach)\b")
 
 _UNITS = {
-    "sekunde": 1, "sekunden": 1, "sek": 1,
-    "minute": 60, "minuten": 60, "min": 60,
-    "stunde": 3600, "stunden": 3600, "std": 3600, "h": 3600,
+    "sekunde": 1,
+    "sekunden": 1,
+    "sek": 1,
+    "minute": 60,
+    "minuten": 60,
+    "min": 60,
+    "stunde": 3600,
+    "stunden": 3600,
+    "std": 3600,
+    "h": 3600,
 }
-_WORTZAHLEN = {"ein": 1, "eine": 1, "einer": 1, "einen": 1, "einem": 1,
-               "halbe": 0.5, "halber": 0.5, "halben": 0.5, "halbes": 0.5}
+_WORTZAHLEN = {
+    "ein": 1,
+    "eine": 1,
+    "einer": 1,
+    "einen": 1,
+    "einem": 1,
+    "halbe": 0.5,
+    "halber": 0.5,
+    "halben": 0.5,
+    "halbes": 0.5,
+}
 
 
 @dataclass(frozen=True)
@@ -191,9 +218,13 @@ def parse_alarm(text: object, jetzt: datetime) -> AlarmAction | None:
     relativ = _relative(text, jetzt)
     if relativ is not None:
         ziel, regel = relativ
-        return AlarmAction("set", regel, f"Wecker steht auf {_sprechzeit(ziel)}.", ziel.strftime("%Y-%m-%d %H:%M"))
+        return AlarmAction(
+            "set", regel, f"Wecker steht auf {_sprechzeit(ziel)}.", ziel.strftime("%Y-%m-%d %H:%M")
+        )
     absolut = _absolute(text, jetzt)
     if absolut is not None:
         ziel, regel = absolut
-        return AlarmAction("set", regel, f"Wecker steht auf {_sprechzeit(ziel)}.", ziel.strftime("%Y-%m-%d %H:%M"))
+        return AlarmAction(
+            "set", regel, f"Wecker steht auf {_sprechzeit(ziel)}.", ziel.strftime("%Y-%m-%d %H:%M")
+        )
     return None
