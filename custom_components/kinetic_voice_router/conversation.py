@@ -15,8 +15,10 @@ such as "Nein, ich meinte Mulan" continues the original request and, if the mish
 word is reliably known, asks once whether to remember the pair. Only an explicit
 "Ja" in the same conversation stores it.
 
-It never calls Home Assistant services, never switches devices, never changes
-exposures or the Assist pipeline, and never stores or logs the spoken text.
+It calls exactly one Home Assistant service - `nabu_alarm_writer.execute_voice`,
+allowlisted in `voice_router.alarm.AUTHORIZED_TARGETS` and reachable only through
+`ensure_authorized_target()` - and nothing else: no device switching, no exposure or
+pipeline change, and never stores or logs the spoken text.
 """
 
 from __future__ import annotations
@@ -50,6 +52,8 @@ from .voice_router.speech_memory import (
 from .voice_router.speech_memory import (
     Source as MemorySource,
 )
+from .voice_router.authorization import ensure_authorized_target
+from .voice_router.alarm import AUTHORIZED_TARGETS
 from .voice_router.state import ProposalStatus
 
 _LOGGER = logging.getLogger(__name__)
@@ -156,6 +160,15 @@ class KineticVoiceRouterConversationEntity(conversation.ConversationEntity):
         async def call_hermes() -> str | None:
             return await self._ask_hermes(messages, session_id, user_input.language)
 
+        async def execute_router_action(action) -> None:
+            """Fuehrt ausschliesslich allowlistete Ziele aus, sonst fail-closed."""
+            domain, service = ensure_authorized_target(action)
+            if not self.hass.services.has_service(domain, service):
+                raise LookupError("service not available")
+            await self.hass.services.async_call(
+                domain, service, dict(action.data), blocking=True
+            )
+
         if bridge.enabled:
             reply = await bridge.async_handle(
                 text=route_text,
@@ -164,6 +177,7 @@ class KineticVoiceRouterConversationEntity(conversation.ConversationEntity):
                 call_hermes=call_hermes,
                 hermes_errors=_HERMES_ERRORS,
                 chat_followup=chat_followup,
+                execute_action=execute_router_action,
             )
             if reply is not None:
                 _LOGGER.debug("Router decision: %s", reply.decision.trace())

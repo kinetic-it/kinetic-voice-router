@@ -8,6 +8,8 @@ from __future__ import annotations
 from .model import ClarificationKind, FailureCode
 
 NOT_EXECUTED = "Das konnte ich gerade nicht ausführen."
+ALARM_UNAVAILABLE = "Den Wecker kann ich gerade nicht stellen."
+ALARM_NOT_UNDERSTOOD = "Die Weckzeit habe ich nicht verstanden."
 CAPABILITY_UNSURE = "Ob das geht, kann ich hier nicht sicher sagen."
 CONFIRMATION_NOT_EXECUTABLE = "Ausführen kann ich das von hier aus nicht."
 STATUS_NOT_AVAILABLE = "Den Gerätezustand kann ich von hier aus nicht abfragen."

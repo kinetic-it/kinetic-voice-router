@@ -9,13 +9,17 @@ Der Router selbst fuehrt keine Aktion aus, ruft kein Netz und keine HA-API auf.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
 from . import responses
+from .alarm import parse_alarm
 from .classify import Kind, classify, is_device_term, normalize
 from .model import (
+    AuthorizedAction,
     Clarification,
     ClarificationKind,
     Evidence,
@@ -60,14 +64,26 @@ def operating_mode(options: Mapping[str, object] | None) -> OperatingMode:
 
 @dataclass(frozen=True)
 class RouterConfig:
-    """Routing an/aus fuer `route()`. Standard: deaktiviert."""
+    """Routing an/aus fuer `route()`. Standard: deaktiviert.
+
+    `alarm_enabled` ist ein eigener, ausdruecklicher Opt-in: nur damit darf der
+    Router die eine autorisierte Weckeraktion vorschlagen. `now` erlaubt Tests
+    mit fester Uhrzeit.
+    """
 
     router_enabled: bool = False
+    alarm_enabled: bool = False
+    now_local: datetime | None = None
 
     @classmethod
     def from_mapping(cls, options: Mapping[str, object] | None) -> RouterConfig:
         """Fail-closed: nur Betriebsart ACTIVE (bzw. altes echtes `True`) routet."""
-        return cls(router_enabled=operating_mode(options) is OperatingMode.ACTIVE)
+        return cls(
+            router_enabled=operating_mode(options) is OperatingMode.ACTIVE,
+            alarm_enabled=bool(
+                isinstance(options, Mapping) and options.get("alarm_actions") is True
+            ),
+        )
 
 
 def should_route(config: RouterConfig, route_input: RouteInput) -> bool:
@@ -88,6 +104,7 @@ def _decision(
     evidence: Evidence = Evidence.NONE,
     clarification: Clarification | None = None,
     explained: FailureCode | None = None,
+    action: AuthorizedAction | None = None,
 ) -> RouteDecision:
     return RouteDecision(
         lane=lane,
@@ -98,6 +115,7 @@ def _decision(
         diagnostic_evidence=evidence,
         clarification=clarification,
         explained_failure=explained,
+        authorized_action=action,
     )
 
 
@@ -162,6 +180,18 @@ def route(
         return _decision(
             Lane.UNKNOWN, ReasonCode.CLARIFICATION_DECLINED, "R-DECLINE-PENDING", responses.DECLINED
         )
+
+    if config.alarm_enabled:
+        jetzt = config.now_local or datetime.now()
+        wecker = parse_alarm(normalized, jetzt)
+        if wecker is not None:
+            return _decision(
+                Lane.CONTROL_FALLBACK,
+                ReasonCode.ALARM_AUTHORIZED,
+                wecker.rule_id,
+                wecker.speak,
+                action=AuthorizedAction(wecker.domain, wecker.service, wecker.data),
+            )
 
     kind = result.kind
     # These are confirmations/short words, not control acknowledgements.

@@ -5,10 +5,11 @@ Reine Datentypen ohne Seiteneffekte. Keine Netz-, Datei- oder HA-Zugriffe.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-ROUTER_VERSION = "0.5.0b4"
+ROUTER_VERSION = "0.5.0b5"
 
 
 class Lane(StrEnum):
@@ -29,6 +30,7 @@ class ReasonCode(StrEnum):
     CHAT_FOLLOWUP = "CHAT_FOLLOWUP"
     # CONTROL_FALLBACK
     ACTION_LIKE_WITHOUT_EXECUTION = "ACTION_LIKE_WITHOUT_EXECUTION"
+    ALARM_AUTHORIZED = "ALARM_AUTHORIZED"
     CAPABILITY_QUESTION = "CAPABILITY_QUESTION"
     CONFIRMATION_WITHOUT_EXECUTION_PATH = "CONFIRMATION_WITHOUT_EXECUTION_PATH"
     STATUS_QUERY_WITHOUT_VERIFIED_ACCESS = "STATUS_QUERY_WITHOUT_VERIFIED_ACCESS"
@@ -119,6 +121,19 @@ class RouteInput:
 
 
 @dataclass(frozen=True)
+class AuthorizedAction:
+    """Eng begrenzte, ausdruecklich autorisierte HA-Aktion.
+
+    Nur Ziele aus `voice_router.alarm.AUTHORIZED_TARGETS`; der Router
+    bleibt bei Geraeteaktionen grundsaetzlich ausfuehrungsfrei.
+    """
+
+    domain: str
+    service: str
+    data: Mapping[str, object]
+
+
+@dataclass(frozen=True)
 class RouteDecision:
     lane: Lane
     reason_code: ReasonCode
@@ -128,6 +143,7 @@ class RouteDecision:
     diagnostic_evidence: Evidence = Evidence.NONE
     clarification: Clarification | None = None
     explained_failure: FailureCode | None = None
+    authorized_action: AuthorizedAction | None = None
     router_version: str = ROUTER_VERSION
     # Invariante: der Router fuehrt niemals Geraeteaktionen aus.
     may_call_ha_action: bool = field(default=False, init=False)

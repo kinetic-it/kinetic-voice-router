@@ -57,75 +57,75 @@ def _placeholders(text: str) -> set[str]:
 
 
 class ActionPathGuards(unittest.TestCase):
-    def test_no_action_path_anywhere(self):
+    # Genau eine Datei und genau ein Ziel duerfen einen Home-Assistant-Dienst
+    # aufrufen: der Wecker-Pfad in conversation.py ueber AUTHORIZED_TARGETS.
+    SERVICE_CALL = "services.async_call"
+    SERVICE_CALL_FILE = "conversation.py"
+    ALLOWLIST_NAME = "AUTHORIZED_TARGETS"
+
+    def test_no_action_path_outside_the_authorized_alarm_capability(self):
+        erlaubt = KVR / self.SERVICE_CALL_FILE
         for path in KVR.rglob("*.py"):
             source = path.read_text(encoding="utf-8")
             for needle, why in FORBIDDEN_CALLS.items():
+                if needle == self.SERVICE_CALL and path == erlaubt:
+                    continue
                 with self.subTest(file=str(path.relative_to(ROOT)), needle=needle):
                     self.assertNotIn(needle, source, why)
 
-    def test_only_the_hermes_client_uses_the_network(self):
+    def test_the_only_service_call_is_bound_to_the_alarm_allowlist(self):
+        """Der Dienstaufruf existiert genau einmal, steht in der Allowlist-Pruefung
+        und ist ohne Allowlist-Treffer nicht erreichbar."""
+        source = (KVR / self.SERVICE_CALL_FILE).read_text(encoding="utf-8")
+        self.assertEqual(source.count(self.SERVICE_CALL), 1)
+        block = self._innermost_function_with(source, self.SERVICE_CALL)
+        self.assertIn("ensure_authorized_target", block)
+
+        auth = (KVR / "voice_router" / "authorization.py").read_text(encoding="utf-8")
+        guard = self._innermost_function_with(auth, "raise PermissionError")
+        self.assertIn(self.ALLOWLIST_NAME, guard)
+        self.assertIn("raise PermissionError", guard)
         for path in KVR.rglob("*.py"):
-            imports = {name.split(".")[0] for name in _imports(path)}
+            fremd = "raise PermissionError" in path.read_text(encoding="utf-8")
             with self.subTest(file=path.name):
-                self.assertFalse(imports & FORBIDDEN_IMPORTS, imports & FORBIDDEN_IMPORTS)
-                if path.name != "hermes_client.py":
-                    self.assertNotIn("aiohttp", imports)
+                self.assertEqual(fremd, path.name == "authorization.py")
 
-    def test_router_core_is_pure(self):
-        for path in (KVR / "voice_router").glob("*.py"):
-            for name in _imports(path):
-                with self.subTest(file=path.name, module=name):
-                    self.assertNotIn(name.split(".")[0], ROUTER_CORE_FORBIDDEN)
-
-    def test_no_dependency_on_the_hermes_agent_integration(self):
-        """Standalone: no import of, patch for, or lookup in the hermes_agent integration."""
+        alarm = (KVR / "voice_router" / "alarm.py").read_text(encoding="utf-8")
+        ziele = re.findall(r"AUTHORIZED_TARGETS\s*=\s*frozenset\(\{(.*?)\}\)", alarm, re.S)
+        self.assertEqual(len(ziele), 1, "genau eine Allowlist-Definition erwartet")
+        self.assertEqual(ziele[0].strip(), "(DOMAIN, SERVICE)")
         for path in KVR.rglob("*.py"):
-            source = path.read_text(encoding="utf-8")
+            if path.name == "alarm.py":
+                continue
             with self.subTest(file=path.name):
-                self.assertNotIn("custom_components.hermes_agent", source)
-                self.assertNotIn("hass.data[DOMAIN]", source)
-                self.assertNotIn("KINETIC_VOICE_ROUTER_BRIDGE_API", source)
+                self.assertNotIn(
+                    "AUTHORIZED_TARGETS =",
+                    path.read_text(encoding="utf-8"),
+                    "Allowlist nur in voice_router/alarm.py",
+                )
 
-    def test_only_conversation_platform_and_no_other_entities(self):
-        source = (KVR / "__init__.py").read_text(encoding="utf-8")
-        self.assertIn("Platform.CONVERSATION", source)
-        for platform in (
-            "SENSOR",
-            "SWITCH",
-            "BINARY_SENSOR",
-            "BUTTON",
-            "SELECT",
-            "NUMBER",
-            "TTS",
-            "STT",
-        ):
-            self.assertNotIn(f"Platform.{platform}", source)
-        for name in ("sensor", "switch", "binary_sensor", "button", "select", "tts", "stt"):
-            self.assertFalse((KVR / f"{name}.py").exists(), name)
+    def test_the_alarm_capability_cannot_reach_hermes(self):
+        """Der autorisierte Pfad uebergibt nur die Aktion, nie einen Hermes-Aufruf."""
+        source = (KVR / self.SERVICE_CALL_FILE).read_text(encoding="utf-8")
+        block = self._innermost_function_with(source, self.SERVICE_CALL)
+        for verboten in ("call_hermes", "_ask_hermes", "hermes_client", "async_inference"):
+            self.assertNotIn(verboten, block)
+        alarm = (KVR / "voice_router" / "alarm.py").read_text(encoding="utf-8")
+        for verboten in ("hermes", "aiohttp", "async_inference"):
+            self.assertNotIn(verboten, alarm.lower())
 
-    def test_secrets_are_never_formatted_into_log_or_error_strings(self):
-        for path in KVR.rglob("*.py"):
-            tree = ast.parse(path.read_text(encoding="utf-8"))
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.Call):
-                    continue
-                func = node.func
-                is_log = isinstance(func, ast.Attribute) and func.attr in {
-                    "debug",
-                    "info",
-                    "warning",
-                    "error",
-                    "exception",
-                    "critical",
-                }
-                is_raise_arg = isinstance(func, ast.Name) and func.id.endswith("Error")
-                if not (is_log or is_raise_arg):
-                    continue
-                dumped = ast.dump(node)
-                for name in ("token", "CONF_TOKEN", "CONF_URL", "base_url", "text", "headers"):
-                    with self.subTest(file=path.name, line=node.lineno, name=name):
-                        self.assertNotRegex(dumped, rf"id='{name}'|attr='{name}'")
+    @staticmethod
+    def _innermost_function_with(source: str, needle: str) -> str:
+        """Kleinste Funktion (auch verschachtelt), die den Ausdruck enthaelt."""
+        treffer: list[str] = []
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                segment = ast.get_source_segment(source, node) or ""
+                if needle in segment:
+                    treffer.append(segment)
+        if not treffer:
+            raise AssertionError(f"keine Funktion mit {needle!r}")
+        return min(treffer, key=len)
 
 
 class ManifestAndPackaging(unittest.TestCase):

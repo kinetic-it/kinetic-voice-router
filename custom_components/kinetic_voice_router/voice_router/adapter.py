@@ -19,7 +19,15 @@ from dataclasses import dataclass
 from . import responses
 from .classify import is_narrative_request
 from .errors import classify_companion_error, normalize_chat_output
-from .model import FailureCode, FailureSource, Lane, ReasonCode, RouteDecision, RouteInput
+from .model import (
+    AuthorizedAction,
+    FailureCode,
+    FailureSource,
+    Lane,
+    ReasonCode,
+    RouteDecision,
+    RouteInput,
+)
 from .router import OperatingMode, RouterConfig, operating_mode, route, should_route
 from .state import SessionStore
 from .stats import RuntimeStats
@@ -140,6 +148,7 @@ class RouterBridge:
         call_hermes: Callable[[], Awaitable[str | None]],
         hermes_errors: tuple[type[BaseException], ...],
         chat_followup: bool = False,
+        execute_action: Callable[[AuthorizedAction], Awaitable[None]] | None = None,
     ) -> BridgeReply | None:
         """Bearbeitet einen Turn. None heisst: Router greift nicht ein.
 
@@ -164,6 +173,22 @@ class RouterBridge:
                 False,
                 ROUTER_FAILURE_DECISION,
             )
+        if decision.authorized_action is not None:
+            """Genau eine autorisierte Aktion; Fehler enden neutral, ohne Ausnahme."""
+            if execute_action is None:
+                return BridgeReply(responses.ALARM_UNAVAILABLE, False, False, decision)
+            try:
+                await execute_action(decision.authorized_action)
+            except Exception:  # noqa: BLE001 - Aktion darf nie durchschlagen
+                with contextlib.suppress(Exception):
+                    self.store.record_failure(
+                        conversation_id, FailureCode.ACTION_LIKE_UNHANDLED, FailureSource.ROUTER
+                    )
+                return BridgeReply(responses.NOT_EXECUTED, False, False, decision)
+            return BridgeReply(
+                decision.response or responses.NOT_EXECUTED, False, False, decision
+            )
+
         if not decision.may_call_hermes:
             return BridgeReply(
                 decision.response or responses.NOT_UNDERSTOOD, False, False, decision

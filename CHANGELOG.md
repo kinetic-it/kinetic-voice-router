@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0b5]
+
+- Optionaler, ausdruecklich autorisierter Ausfuehrungspfad fuer Weckerbefehle:
+  der Router erkennt relative und absolute Weckzeiten und uebergibt genau eine
+  Aktion an `nabu_alarm_writer.execute_voice` (Allowlist in
+  `voice_router/alarm.AUTHORIZED_TARGETS`).
+- Opt-in ueber die Option `alarm_actions` (Default aus, fail-closed).
+- Der Router-Kern bleibt ausfuehrungsfrei; die Allowlist-Pruefung liegt in
+  `voice_router/authorization.py`, der einzige Dienstaufruf in `conversation.py`.
+- Schutzpruefungen: generische Dienstaufrufe bleiben verboten, Hermes hat im
+  Weckerpfad keine Ausfuehrungsrechte.
+
 All notable changes are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions with `b`/`rc` are
 pre-releases and **not** a recommendation for production use.
