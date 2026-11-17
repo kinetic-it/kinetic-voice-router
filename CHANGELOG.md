@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.0b8]
+
+### Fixed
+- Absolute Uhrzeiten mit Minuten wurden im normalisierten Text nicht erkannt: der Router
+  wandelt "15:30" in "15 30", wodurch das alte Muster nur "30 uhr" sah und die Stunde
+  ungueltig war. Jetzt werden alle Zeitmuster geprueft und der erste gueltige Wert genommen
+  ("auf 15:30 Uhr", "auf 16:45 Uhr", "um 7 Uhr").
+
+## [0.5.0b7]
+
+### Fixed
+- Weckerbefehl wird nicht mehr an der Gross-/Kleinschreibung abgewiesen: der Parser normalisiert die Eingabe (Spracherkennung liefert "Stelle einen Wecker ..." mit grossem Anfangsbuchstaben).
+- Satzzeichen brechen die Worterkennung nicht mehr ("Loesche den Wecker." wurde zuvor nicht erkannt).
+- Absolute Zeiten werden auch mit "auf" verstanden ("auf 15:30 Uhr", "auf 15:30", "auf 7 Uhr").
+
+### Changed
+- "Timer" ist kein Wecker-Nomen mehr: Timer-Anfragen fallen nie in den Weckerpfad (eindeutige Trennung Wecker/Timer).
+
 ## [0.5.0b6]
 
 - Optionsflow: `alarm_actions` als ausdrueckliche Zustimmung zum autorisierten Weckerpfad (Standard aus).

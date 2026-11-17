@@ -24,7 +24,9 @@ AUTHORIZED_TARGETS = frozenset({(DOMAIN, SERVICE)})
 MIN_DELAY_SECONDS = 60
 MAX_DELAY_SECONDS = 24 * 3600
 
-_NOUNS = frozenset({"wecker", "timer"})
+# Nur Wecker sind Wecker. "Timer" gehoert Home Assistant und darf nie in den
+# Weckerpfad fallen (eindeutige Trennung beider Begriffe).
+_NOUNS = frozenset({"wecker"})
 _SET_VERBS = frozenset(
     {
         "stelle",
@@ -55,9 +57,9 @@ _GLEICH = re.compile(r"\bgleich\b")
 _VIERTEL_VOR = re.compile(r"\bviertel\s+vor\s+(?P<h>\d{1,2})\b")
 _VIERTEL_NACH = re.compile(r"\bviertel\s+nach\s+(?P<h>\d{1,2})\b")
 _HALB = re.compile(r"\bhalb\s+(?P<h>\d{1,2})\b")
-_UHR = re.compile(r"\b(?:um\s+)?(?P<h>\d{1,2})(?:[:.](?P<m>\d{2}))?\s*uhr\b")
-_UM_MIN = re.compile(r"\bum\s+(?P<h>\d{1,2})(?:[:.]|\s+)(?P<m>\d{2})\b")
-_UM = re.compile(r"\bum\s+(?P<h>\d{1,2})\b")
+_UHR = re.compile(r"\b(?:(?:um|auf)\s+)?(?P<h>\d{1,2})(?:[:.](?P<m>\d{2}))?\s*uhr\b")
+_UM_MIN = re.compile(r"\b(?:um|auf)\s+(?P<h>\d{1,2})(?:[:.]|\s+)(?P<m>\d{2})\b")
+_UM = re.compile(r"\b(?:um|auf)\s+(?P<h>\d{1,2})\b")
 _MORGEN = re.compile(r"\bmorgen\b")
 _HEUTE = re.compile(r"\bheute\b")
 _MEHRFACH = re.compile(r"\b(?:und|dann|danach)\b")
@@ -150,6 +152,22 @@ def _lokal_valid(tag: datetime, stunde: int, minute: int) -> datetime | None:
     return tag.replace(hour=stunde, minute=minute, second=0, microsecond=0)
 
 
+def _uhrzeit_aus_text(text: str) -> tuple[int | None, int | None]:
+    """Erste brauchbare Uhrzeit aus den Mustern lesen.
+
+    Der Router arbeitet auf normalisiertem Text; dort wird "15:30" zu "15 30".
+    Deshalb werden alle Muster geprueft und der erste gueltige Wert genommen,
+    statt beim ersten (moeglicherweise unbrauchbaren) Treffer abzubrechen.
+    """
+    for muster in (_UHR, _UM_MIN, _UM):
+        for treffer in muster.finditer(text):
+            stunde = int(treffer.group("h"))
+            minute = int(treffer.groupdict().get("m") or 0)
+            if 0 <= stunde <= 23 and 0 <= minute <= 59:
+                return stunde, minute
+    return None, None
+
+
 def _absolute(text: str, jetzt: datetime) -> tuple[datetime, str] | None:
     stunde = minute = None
     regel = "R-ALARM-SET-ABSOLUT"
@@ -166,11 +184,9 @@ def _absolute(text: str, jetzt: datetime) -> tuple[datetime, str] | None:
             if treffer is not None:
                 stunde, minute, regel = int(treffer.group("h")) - 1, 30, "R-ALARM-SET-HALB"
             else:
-                treffer = _UHR.search(text) or _UM_MIN.search(text) or _UM.search(text)
-                if treffer is None:
+                stunde, minute = _uhrzeit_aus_text(text)
+                if stunde is None or minute is None:
                     return None
-                stunde = int(treffer.group("h"))
-                minute = int(treffer.groupdict().get("m") or 0)
 
     if stunde is None or minute is None or not (0 <= stunde <= 23 and 0 <= minute <= 59):
         return None
@@ -200,11 +216,15 @@ def parse_alarm(text: object, jetzt: datetime) -> AlarmAction | None:
         return None
     if not text.strip():
         return None
-    woerter = text.split()
+    # Spracherkennung liefert Gross-/Kleinschreibung gemischt ("Stelle einen Wecker auf
+    # 15:30 Uhr."). Alle Muster sind klein geschrieben, deshalb hier einmal normalisieren.
+    klein = text.lower()
+    # Satzzeichen duerfen die Wortpruefung nicht brechen ("Loesche den Wecker.").
+    woerter = re.findall(r"[a-z0-9\u00e4\u00f6\u00fc\u00df]+", klein)
     if not any(w in _NOUNS for w in woerter):
         return None
     # Mehrteilige Anfragen ("... und schalte das Licht an") bleiben beim alten Pfad.
-    if _MEHRFACH.search(text):
+    if _MEHRFACH.search(klein):
         return None
 
     if any(w in _DELETE_VERBS for w in woerter):
@@ -215,13 +235,13 @@ def parse_alarm(text: object, jetzt: datetime) -> AlarmAction | None:
     if not (any(w in _SET_VERBS for w in woerter) or woerter[0] in _NOUNS):
         return None
 
-    relativ = _relative(text, jetzt)
+    relativ = _relative(klein, jetzt)
     if relativ is not None:
         ziel, regel = relativ
         return AlarmAction(
             "set", regel, f"Wecker steht auf {_sprechzeit(ziel)}.", ziel.strftime("%Y-%m-%d %H:%M")
         )
-    absolut = _absolute(text, jetzt)
+    absolut = _absolute(klein, jetzt)
     if absolut is not None:
         ziel, regel = absolut
         return AlarmAction(
